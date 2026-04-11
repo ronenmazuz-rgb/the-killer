@@ -1,5 +1,6 @@
 import type { Server, Socket } from 'socket.io';
-import { CLIENT_EVENTS, SERVER_EVENTS, MIN_PLAYERS } from '@the-killer/shared';
+import { CLIENT_EVENTS, SERVER_EVENTS } from '../shared/events';
+import { MIN_PLAYERS } from '../shared/constants';
 import {
   createRoom,
   joinRoom,

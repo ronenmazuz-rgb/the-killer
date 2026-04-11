@@ -1,4 +1,5 @@
-import { Phase, TIMERS, type Winner } from '@the-killer/shared';
+import { Phase, type Winner } from '../shared/types';
+import { TIMERS } from '../shared/constants';
 import {
   type GameRoom,
   assignRoles,

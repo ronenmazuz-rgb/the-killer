@@ -1,8 +1,4 @@
 import {
-  ROOM_CODE_LENGTH,
-  ROOM_CODE_CHARS,
-  MIN_PLAYERS,
-  MAX_PLAYERS,
   type Player,
   type PlayerWithRole,
   type Role,
@@ -12,7 +8,8 @@ import {
   type Winner,
   CardSuit,
   CardRank,
-} from '@the-killer/shared';
+} from '../shared/types';
+import { ROOM_CODE_LENGTH, ROOM_CODE_CHARS, MIN_PLAYERS, MAX_PLAYERS } from '../shared/constants';
 
 export interface GameRoom {
   code: string;

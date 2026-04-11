@@ -1,7 +1,1 @@
-[build]
-builder = "nixpacks"
-buildCommand = "npm install"
-
-[deploy]
-startCommand = "npx tsx apps/server/src/index.ts"
-restartPolicyType = "on_failure"
+# placeholder - actual config is in apps/server/railway.toml
