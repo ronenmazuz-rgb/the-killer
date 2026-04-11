@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --killer-bg: #0a0a0f;
+  --killer-surface: #1a1a2e;
+  --killer-red: #CC0000;
+  --killer-red-glow: #ff1a1a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  background-color: var(--killer-bg);
+  color: #e0e0e0;
+  font-family: 'Rubik', Arial, sans-serif;
+  min-height: 100vh;
+}
+
+/* אפקט ערפל רקע */
+.fog-bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(139, 0, 0, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(30, 58, 95, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(139, 0, 0, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* שכבת לילה */
+.night-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(5, 5, 16, 0.95);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* אנימציית פעימה */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(204, 0, 0, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(204, 0, 0, 0.6); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* אנימציית הפיכת קלף */
+.card-flip {
+  perspective: 1000px;
+}
+
+.card-flip-inner {
+  transition: transform 0.8s;
+  transform-style: preserve-3d;
+}
+
+.card-flip-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-front,
+.card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 12px;
+}
+
+.card-front {
+  transform: rotateY(180deg);
+}
+
+/* כפתור ראשי */
+.btn-primary {
+  @apply bg-gradient-to-r from-killer-red-dark to-killer-red text-white font-bold py-3 px-8 rounded-lg
+    transition-all duration-300 hover:shadow-lg hover:shadow-killer-red/30 hover:scale-105
+    active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+}
+
+.btn-secondary {
+  @apply bg-killer-surface border border-killer-text-dim/30 text-killer-text font-medium py-3 px-8 rounded-lg
+    transition-all duration-300 hover:border-killer-red/50 hover:bg-killer-surface/80
+    active:scale-95;
+}
+
+/* input */
+.input-field {
+  @apply bg-killer-surface border border-killer-text-dim/30 text-killer-text rounded-lg px-4 py-3
+    focus:outline-none focus:border-killer-red/50 focus:ring-1 focus:ring-killer-red/30
+    placeholder:text-killer-text-dim/50 transition-all duration-200;
+}
+
+/* גלילה מותאמת */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--killer-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--killer-surface);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2a4e;
+}
