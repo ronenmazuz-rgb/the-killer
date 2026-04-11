@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "start": "npx tsx apps/server/src/index.ts"
   },
   "devDependencies": {
     "turbo": "^2.5.0",
