@@ -145,6 +145,23 @@ export function registerHandlers(io: Server, socket: Socket): void {
     });
   });
 
+  // === WebRTC Signaling Relay ===
+  socket.on('webrtc:join', ({ roomCode }: { roomCode: string }) => {
+    socket.to(roomCode).emit('webrtc:peer-joined', { peerId: socket.id });
+  });
+
+  socket.on('webrtc:offer', ({ to, offer }: { to: string; offer: unknown }) => {
+    socket.to(to).emit('webrtc:offer', { from: socket.id, offer });
+  });
+
+  socket.on('webrtc:answer', ({ to, answer }: { to: string; answer: unknown }) => {
+    socket.to(to).emit('webrtc:answer', { from: socket.id, answer });
+  });
+
+  socket.on('webrtc:ice-candidate', ({ to, candidate }: { to: string; candidate: unknown }) => {
+    socket.to(to).emit('webrtc:ice-candidate', { from: socket.id, candidate });
+  });
+
   // === התנתקות ===
   socket.on('disconnect', () => {
     const room = removePlayer(socket.id);

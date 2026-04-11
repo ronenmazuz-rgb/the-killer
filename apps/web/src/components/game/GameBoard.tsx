@@ -1,20 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Phase } from '@the-killer/shared';
 import { useGameStore } from '@/stores/gameStore';
 import { useSocket } from '@/hooks/useSocket';
+import { useWebRTC } from '@/hooks/useWebRTC';
 import CardReveal from './CardReveal';
 import NightActionPanel from './NightActionPanel';
 import VotingPanel from './VotingPanel';
 import GameOverModal from './GameOverModal';
 import NarratorBanner from './NarratorBanner';
 import PlayerList from './PlayerList';
+import VideoGrid from './VideoGrid';
 
 export default function GameBoard() {
-  const { gameState, narratorMessages } = useGameStore();
+  const { gameState, narratorMessages, roomCode } = useGameStore();
   const { nightAction, accuse, vote, endDiscussion } = useSocket();
   const [cardRevealed, setCardRevealed] = useState(false);
+  const { localStream, remoteStreams, mediaError, isMicOn, isCameraOn, toggleMic, toggleCamera } =
+    useWebRTC(roomCode ?? null);
 
   if (!gameState) return null;
 
@@ -158,6 +162,24 @@ export default function GameBoard() {
             players={players}
             myId={myId}
             onSelectTarget={nightAction}
+          />
+        )}
+
+        {/* וידאו - שלבי יום */}
+        {(phase === Phase.DAY_DISCUSSION ||
+          phase === Phase.DAY_DEFENSE ||
+          phase === Phase.DAY_VOTING ||
+          phase === Phase.DAY_ANNOUNCEMENT) && (
+          <VideoGrid
+            players={players}
+            myId={myId}
+            localStream={localStream}
+            remoteStreams={remoteStreams}
+            mediaError={mediaError}
+            isMicOn={isMicOn}
+            isCameraOn={isCameraOn}
+            onToggleMic={toggleMic}
+            onToggleCamera={toggleCamera}
           />
         )}
 

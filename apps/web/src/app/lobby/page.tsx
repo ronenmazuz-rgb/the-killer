@@ -4,6 +4,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/useSocket';
 import { useGameStore } from '@/stores/gameStore';
+import { useWebRTC } from '@/hooks/useWebRTC';
+import VideoGrid from '@/components/game/VideoGrid';
 import Image from 'next/image';
 import { MIN_PLAYERS } from '@the-killer/shared';
 
@@ -24,6 +26,9 @@ function LobbyContent() {
     playerId,
     gameState,
   } = useGameStore();
+
+  const { localStream, remoteStreams, mediaError, isMicOn, isCameraOn, toggleMic, toggleCamera } =
+    useWebRTC(currentRoom ?? null);
 
   // אם יש סטייט משחק - עבור לחדר
   useEffect(() => {
@@ -102,6 +107,23 @@ function LobbyContent() {
               ))}
             </div>
           </div>
+
+          {/* וידאו */}
+          {playerId && (
+            <div className="mb-6">
+              <VideoGrid
+                players={lobbyPlayers}
+                myId={playerId}
+                localStream={localStream}
+                remoteStreams={remoteStreams}
+                mediaError={mediaError}
+                isMicOn={isMicOn}
+                isCameraOn={isCameraOn}
+                onToggleMic={toggleMic}
+                onToggleCamera={toggleCamera}
+              />
+            </div>
+          )}
 
           {/* כפתור התחלה */}
           {isHost ? (
