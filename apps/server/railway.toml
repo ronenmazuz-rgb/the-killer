@@ -1,7 +1,1 @@
-[build]
-builder = "nixpacks"
-buildCommand = "cd ../.. && npm install"
-
-[deploy]
-startCommand = "cd ../.. && npx tsx apps/server/src/index.ts"
-restartPolicyType = "on_failure"
+# Railway config moved to repo root
