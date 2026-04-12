@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Player, Card, Role } from '@the-killer/shared';
 import MiniCard from './MiniCard';
 import MiniVideo from './MiniVideo';
@@ -52,23 +52,35 @@ export default function PlayerSeat({
   isMobile,
 }: PlayerSeatProps) {
   const avatar = getPlayerAvatar(player.id);
-  const avatarSize = isMobile ? 56 : 80;
-  const cardSize = isSelf ? 'lg' : 'sm';
+
+  // עיגול וידאו גדול — לב הממשק
+  const circleSize = isMobile ? 88 : 128;
 
   const handleClick = () => {
-    if (isTargetable && onSelect) {
-      onSelect(player.id);
-    }
+    if (isTargetable && onSelect) onSelect(player.id);
   };
 
-  // CSS classes לפי מצב
-  const seatClasses = [
-    isTargetable && !isTargetableBlue && 'seat-targetable',
-    isTargetableBlue && 'seat-targetable-blue',
-    isAccused && 'seat-accused',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  // גלאות מצב לצבע הגבול
+  const ringColor = isAccused
+    ? 'border-red-500 ring-4 ring-red-500/40'
+    : isSelected
+      ? 'border-killer-red ring-4 ring-killer-red/40'
+      : isTargetableBlue
+        ? 'border-killer-blue-glow ring-4 ring-killer-blue-glow/30'
+        : isTargetable
+          ? 'border-killer-red ring-4 ring-killer-red/30'
+          : isSelf
+            ? 'border-killer-gold/70'
+            : 'border-white/20';
+
+  // CSS classes לאפקטי pulse
+  const pulseClass = isTargetable && !isTargetableBlue
+    ? 'seat-targetable'
+    : isTargetableBlue
+      ? 'seat-targetable-blue'
+      : isAccused
+        ? 'seat-accused'
+        : '';
 
   return (
     <motion.div
@@ -81,112 +93,94 @@ export default function PlayerSeat({
       }}
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
+      transition={{ duration: 0.45, delay: 0.1 }}
     >
-      {/* מיכל ראשי — אווטאר + קלף */}
+      {/* עיגול הוידאו — האלמנט הראשי */}
       <div
-        className={`relative flex flex-col items-center gap-1 ${seatClasses}
+        className={`relative rounded-full overflow-hidden border-3 border-[3px] transition-all duration-300
+          ${ringColor} ${pulseClass}
           ${isTargetable ? 'cursor-pointer' : ''}
           ${isDead ? 'opacity-40 grayscale' : ''}
-          rounded-xl p-1.5 transition-all duration-300`}
+          bg-killer-surface shadow-xl`}
+        style={{ width: circleSize, height: circleSize }}
         onClick={handleClick}
         role={isTargetable ? 'button' : undefined}
         tabIndex={isTargetable ? 0 : undefined}
       >
-        {/* אווטאר / וידאו */}
-        <div className="relative">
-          <div
-            className={`rounded-full overflow-hidden flex items-center justify-center
-              bg-killer-surface border-2 transition-all duration-300
-              ${isSelf ? 'border-killer-gold/60' : 'border-killer-text-dim/30'}
-              ${isSelected ? 'border-killer-red ring-2 ring-killer-red/40' : ''}
-              ${isAccused ? 'border-red-500' : ''}`}
-            style={{ width: avatarSize, height: avatarSize }}
-          >
-            {/* כשיש וידאו — מציג אותו בגודל מלא. אחרת — אמוג'י */}
-            {videoStream ? (
-              <MiniVideo
-                stream={videoStream}
-                isLocal={isSelf}
-                size={avatarSize}
-              />
-            ) : (
-              <span style={{ fontSize: avatarSize * 0.5 }}>{avatar}</span>
-            )}
+        {/* וידאו / אמוג'י */}
+        {videoStream ? (
+          <MiniVideo stream={videoStream} isLocal={isSelf} size={circleSize} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <span style={{ fontSize: circleSize * 0.44 }}>{avatar}</span>
           </div>
+        )}
 
-          {/* סטטוס */}
-          <div
-            className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border border-killer-bg ${
-              !player.isConnected
-                ? 'bg-yellow-500'
-                : isDead
-                  ? 'bg-red-600'
-                  : 'bg-green-500'
-            }`}
-          />
-
-          {/* כתם דם על שחקן מת */}
-          {isDead && !isBeingKilled && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-2xl opacity-70">💀</span>
-            </div>
-          )}
-
-          {/* אנימציית רצח */}
-          <KillAnimation active={!!isBeingKilled} />
-
-          {/* טיפות דם מיובשות (נשארות אחרי רצח) */}
-          {isDead && <BloodSplatter active={isDead} count={5} />}
+        {/* שם — overlay בתחתית העיגול */}
+        <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-[2px] py-1 text-center">
+          <span
+            className={`font-semibold text-white truncate block leading-tight px-1
+              ${isMobile ? 'text-[10px]' : 'text-[11px]'}`}
+          >
+            {player.displayName}{isSelf ? ' ✦' : ''}
+          </span>
         </div>
 
-        {/* קלף */}
+        {/* תפקיד badge — overlay פינה עליונה שמאל (רק לעצמי) */}
+        {isSelf && myRole && (
+          <div className={`absolute top-1.5 left-1.5 text-[13px] leading-none
+            rounded-full w-6 h-6 flex items-center justify-center
+            ${myRole === 'killer' ? 'bg-red-900/80' : myRole === 'detective' ? 'bg-blue-900/80' : 'bg-gray-800/80'}`}>
+            {roleLabels[myRole]}
+          </div>
+        )}
+
+        {/* 💀 על מת */}
+        {isDead && !isBeingKilled && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-4xl opacity-80">💀</span>
+          </div>
+        )}
+
+        {/* אנימציית רצח */}
+        <KillAnimation active={!!isBeingKilled} />
+
+        {/* דם */}
+        {isDead && <BloodSplatter active={isDead} count={5} />}
+      </div>
+
+      {/* נקודת סטטוס */}
+      <div
+        className={`absolute -top-0.5 right-2 w-3.5 h-3.5 rounded-full border-2 border-killer-bg ${
+          !player.isConnected ? 'bg-yellow-400' : isDead ? 'bg-red-600' : 'bg-green-400'
+        }`}
+      />
+
+      {/* קלף — מתחת לעיגול */}
+      <div className="mt-1.5">
         <MiniCard
           card={isSelf ? myCard : undefined}
           role={isSelf ? myRole : undefined}
           isFaceUp={isSelf}
-          size={cardSize as 'sm' | 'lg'}
+          size={isSelf ? 'lg' : 'sm'}
           isKilled={isDead}
         />
+      </div>
 
-        {/* שם + badge */}
-        <div className="flex flex-col items-center gap-0.5 mt-0.5">
-          <span
-            className={`font-medium text-killer-text truncate max-w-[90px] text-center leading-tight ${
-              isMobile ? 'text-[11px]' : 'text-xs'
-            } ${isDead ? 'line-through text-killer-text-dim' : ''}`}
-          >
-            {player.displayName}
-            {isSelf && ' (אתה)'}
-          </span>
-
-          {/* badge תפקיד — רק לעצמי */}
-          {isSelf && myRole && (
-            <span
-              className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
-                myRole === 'killer'
-                  ? 'bg-red-950/60 text-killer-red'
-                  : myRole === 'detective'
-                    ? 'bg-blue-950/60 text-killer-blue-glow'
-                    : 'bg-gray-800/60 text-killer-text-dim'
-              }`}
-            >
-              {roleLabels[myRole]}
-            </span>
-          )}
-        </div>
-
-        {/* אינדיקטור הצבעה */}
+      {/* אינדיקטור הצבעה */}
+      <AnimatePresence>
         {hasVoted && voteValue !== undefined && (
           <motion.span
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="absolute -top-2 -left-2 text-lg"
+            key="vote"
+            initial={{ scale: 0, y: -10 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0 }}
+            className="absolute -top-3 -left-1 text-xl drop-shadow-lg"
           >
             {voteValue ? '👎' : '👍'}
           </motion.span>
         )}
-      </div>
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -22,8 +22,9 @@ export function calculateSeatPositions(
   isMobile = false,
 ): SeatPosition[] {
   // רדיוסי האליפסה (באחוזים מהמיכל)
-  const a = isMobile ? 42 : 45; // חצי-ציר אופקי
-  const b = isMobile ? 33 : 36; // חצי-ציר אנכי
+  // גדולים יותר כדי שיהיה מקום לעיגולי וידאו גדולים
+  const a = isMobile ? 44 : 47; // חצי-ציר אופקי
+  const b = isMobile ? 38 : 42; // חצי-ציר אנכי
 
   const centerX = 50;
   const centerY = 50;

@@ -19,10 +19,10 @@ export default function PokerTable({ children, isNight, isMobile }: PokerTablePr
       <div
         className={`relative ${isNight ? 'table-night' : 'table-day'}`}
         style={{
-          width: isMobile ? '95vw' : '82vw',
-          height: isMobile ? '55vh' : '52vh',
-          maxWidth: '1100px',
-          maxHeight: '600px',
+          width: isMobile ? '88vw' : '72vw',
+          height: isMobile ? '45vh' : '42vh',
+          maxWidth: '900px',
+          maxHeight: '460px',
         }}
       >
         {/* מסגרת עץ חיצונית */}
@@ -58,10 +58,10 @@ export default function PokerTable({ children, isNight, isMobile }: PokerTablePr
       <div
         className="absolute"
         style={{
-          width: isMobile ? '95vw' : '82vw',
-          height: isMobile ? '55vh' : '52vh',
-          maxWidth: '1100px',
-          maxHeight: '600px',
+          width: isMobile ? '88vw' : '72vw',
+          height: isMobile ? '45vh' : '42vh',
+          maxWidth: '900px',
+          maxHeight: '460px',
         }}
       >
         {children}
