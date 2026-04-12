@@ -52,7 +52,7 @@ export default function PlayerSeat({
   isMobile,
 }: PlayerSeatProps) {
   const avatar = getPlayerAvatar(player.id);
-  const avatarSize = isMobile ? 44 : 64;
+  const avatarSize = isMobile ? 56 : 80;
   const cardSize = isSelf ? 'lg' : 'sm';
 
   const handleClick = () => {
@@ -93,29 +93,27 @@ export default function PlayerSeat({
         role={isTargetable ? 'button' : undefined}
         tabIndex={isTargetable ? 0 : undefined}
       >
-        {/* אווטאר */}
+        {/* אווטאר / וידאו */}
         <div className="relative">
           <div
-            className={`rounded-full flex items-center justify-center
+            className={`rounded-full overflow-hidden flex items-center justify-center
               bg-killer-surface border-2 transition-all duration-300
               ${isSelf ? 'border-killer-gold/60' : 'border-killer-text-dim/30'}
               ${isSelected ? 'border-killer-red ring-2 ring-killer-red/40' : ''}
               ${isAccused ? 'border-red-500' : ''}`}
             style={{ width: avatarSize, height: avatarSize }}
           >
-            <span style={{ fontSize: avatarSize * 0.5 }}>{avatar}</span>
-          </div>
-
-          {/* וידאו קטן בפינה */}
-          {videoStream && (
-            <div className="absolute -bottom-1 -right-1">
+            {/* כשיש וידאו — מציג אותו בגודל מלא. אחרת — אמוג'י */}
+            {videoStream ? (
               <MiniVideo
                 stream={videoStream}
                 isLocal={isSelf}
-                size={isMobile ? 24 : 32}
+                size={avatarSize}
               />
-            </div>
-          )}
+            ) : (
+              <span style={{ fontSize: avatarSize * 0.5 }}>{avatar}</span>
+            )}
+          </div>
 
           {/* סטטוס */}
           <div
@@ -154,8 +152,8 @@ export default function PlayerSeat({
         {/* שם + badge */}
         <div className="flex flex-col items-center gap-0.5 mt-0.5">
           <span
-            className={`font-medium text-killer-text truncate max-w-[80px] text-center leading-tight ${
-              isMobile ? 'text-[10px]' : 'text-xs'
+            className={`font-medium text-killer-text truncate max-w-[90px] text-center leading-tight ${
+              isMobile ? 'text-[11px]' : 'text-xs'
             } ${isDead ? 'line-through text-killer-text-dim' : ''}`}
           >
             {player.displayName}

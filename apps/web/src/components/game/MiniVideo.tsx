@@ -23,17 +23,13 @@ export default function MiniVideo({ stream, isLocal, size = 48 }: MiniVideoProps
   if (!stream) return null;
 
   return (
-    <div
-      className="rounded-full overflow-hidden border-2 border-killer-surface/80 shadow-md"
+    <video
+      ref={videoRef}
+      autoPlay
+      muted={isLocal}
+      playsInline
       style={{ width: size, height: size }}
-    >
-      <video
-        ref={videoRef}
-        autoPlay
-        muted={isLocal}
-        playsInline
-        className="w-full h-full object-cover"
-      />
-    </div>
+      className="object-cover rounded-full block"
+    />
   );
 }
