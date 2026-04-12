@@ -1,24 +1,98 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Phase } from '@the-killer/shared';
 import { useGameStore } from '@/stores/gameStore';
 import { useSocket } from '@/hooks/useSocket';
 import { useWebRTC } from '@/hooks/useWebRTC';
+import { calculateSeatPositions } from '@/lib/seatPositions';
+import { SoundManager } from '@/lib/sounds';
 import CardReveal from './CardReveal';
-import NightActionPanel from './NightActionPanel';
-import VotingPanel from './VotingPanel';
 import GameOverModal from './GameOverModal';
-import NarratorBanner from './NarratorBanner';
-import PlayerList from './PlayerList';
-import VideoGrid from './VideoGrid';
+import PokerTable from './PokerTable';
+import NarratorSeat from './NarratorSeat';
+import PlayerSeat from './PlayerSeat';
+import TableCenter from './TableCenter';
+import MediaControls from './MediaControls';
 
 export default function GameBoard() {
   const { gameState, narratorMessages, roomCode } = useGameStore();
   const { nightAction, accuse, vote, endDiscussion } = useSocket();
   const [cardRevealed, setCardRevealed] = useState(false);
+  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
+  const [killedPlayerId, setKilledPlayerId] = useState<string | null>(null);
+  const [showKillAnim, setShowKillAnim] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const { localStream, remoteStreams, mediaError, isMicOn, isCameraOn, toggleMic, toggleCamera } =
     useWebRTC(roomCode ?? null);
+
+  // בדיקת מובייל
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // טעינת סאונדים מראש
+  useEffect(() => {
+    SoundManager.preload();
+  }, []);
+
+  // === סאונד לפי שלב ===
+  useEffect(() => {
+    if (!gameState) return;
+    const { phase } = gameState;
+
+    switch (phase) {
+      case Phase.NIGHT_DETECTIVE:
+      case Phase.NIGHT_KILLER:
+        SoundManager.setAmbience('nightAmbience');
+        SoundManager.play('heartbeat', 0.3);
+        break;
+      case Phase.DAY_ANNOUNCEMENT:
+        SoundManager.setAmbience('dayAmbience');
+        if (gameState.killedPlayerId) {
+          // עיכוב לאנימציית הרצח
+          setTimeout(() => SoundManager.play('knifeStab'), 800);
+          setTimeout(() => SoundManager.play('crowdGasp', 0.6), 2000);
+        }
+        break;
+      case Phase.DAY_DISCUSSION:
+        SoundManager.setAmbience('dayAmbience');
+        break;
+      case Phase.DAY_DEFENSE:
+      case Phase.DAY_VOTING:
+        SoundManager.setAmbience('tension');
+        break;
+      case Phase.DAY_ACCUSATION:
+        SoundManager.play('gavel');
+        break;
+      case Phase.DEALING_CARDS:
+        SoundManager.play('cardDeal');
+        break;
+      case Phase.GAME_OVER:
+        SoundManager.setAmbience(null);
+        if (gameState.winner === 'citizens') {
+          SoundManager.play('victory');
+        } else {
+          SoundManager.play('defeat');
+        }
+        break;
+    }
+  }, [gameState?.phase]);
+
+  // === אנימציית רצח ===
+  useEffect(() => {
+    if (!gameState) return;
+    if (gameState.phase === Phase.DAY_ANNOUNCEMENT && gameState.killedPlayerId) {
+      setKilledPlayerId(gameState.killedPlayerId);
+      setShowKillAnim(true);
+      // האנימציה נמשכת 4 שניות
+      const timer = setTimeout(() => setShowKillAnim(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState?.phase, gameState?.killedPlayerId]);
 
   if (!gameState) return null;
 
@@ -41,34 +115,7 @@ export default function GameBoard() {
   const isAlive = myPlayer?.isAlive ?? false;
   const accusedPlayer = players.find((p) => p.id === accusedPlayerId);
   const isHost = myId === hostId;
-
-  // שם השלב בעברית
-  const phaseLabels: Record<string, string> = {
-    [Phase.DEALING_CARDS]: 'חלוקת קלפים',
-    [Phase.NIGHT_DETECTIVE]: '🌙 לילה - שלב הבלש',
-    [Phase.NIGHT_KILLER]: '🌙 לילה - שלב הרוצח',
-    [Phase.DAY_ANNOUNCEMENT]: '☀️ בוקר טוב עיירה',
-    [Phase.DAY_DISCUSSION]: '☀️ זמן דיון',
-    [Phase.DAY_ACCUSATION]: '☀️ האשמה',
-    [Phase.DAY_DEFENSE]: '⚖️ הגנה',
-    [Phase.DAY_VOTING]: '🗳️ הצבעה',
-    [Phase.GAME_OVER]: 'סוף המשחק',
-  };
-
-  // רול באדג'
-  const roleBadge = myRole && (
-    <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold ${
-      myRole === 'killer'
-        ? 'bg-red-950/60 text-killer-red border border-killer-red/30'
-        : myRole === 'detective'
-          ? 'bg-blue-950/60 text-killer-blue-glow border border-killer-blue-glow/30'
-          : 'bg-gray-800/60 text-killer-text border border-killer-text-dim/30'
-    }`}>
-      {myRole === 'killer' && '🔪 רוצח'}
-      {myRole === 'detective' && '🔍 בלש'}
-      {myRole === 'citizen' && '👤 אזרח'}
-    </div>
-  );
+  const isAccused = myId === accusedPlayerId;
 
   // חשיפת קלף
   if (phase === Phase.DEALING_CARDS && myCard && myRole && !cardRevealed) {
@@ -80,20 +127,6 @@ export default function GameBoard() {
       />
     );
   }
-
-  // שלב לילה - בלש
-  const showDetectivePanel =
-    phase === Phase.NIGHT_DETECTIVE && myRole === 'detective' && isAlive;
-
-  // שלב לילה - רוצח
-  const showKillerPanel =
-    phase === Phase.NIGHT_KILLER && myRole === 'killer' && isAlive;
-
-  // שלב לילה - שחקן פאסיבי (אזרח או שחקן מת)
-  const showNightWaiting =
-    (phase === Phase.NIGHT_DETECTIVE || phase === Phase.NIGHT_KILLER) &&
-    !showDetectivePanel &&
-    !showKillerPanel;
 
   // סוף משחק
   if (phase === Phase.GAME_OVER && winner && allRoles) {
@@ -109,131 +142,129 @@ export default function GameBoard() {
     );
   }
 
+  // === חישוב מושבים ===
+  const myIndex = players.findIndex((p) => p.id === myId);
+  const seatPositions = calculateSeatPositions(players.length, myIndex >= 0 ? myIndex : 0, isMobile);
+
+  // === מצבי שלב ===
+  const isNight = phase === Phase.NIGHT_DETECTIVE || phase === Phase.NIGHT_KILLER;
+  const showDetectiveAction = phase === Phase.NIGHT_DETECTIVE && myRole === 'detective' && isAlive;
+  const showKillerAction = phase === Phase.NIGHT_KILLER && myRole === 'killer' && isAlive;
+  const showNightAction = showDetectiveAction || showKillerAction;
+  const isNightWaiting = isNight && !showNightAction;
+  const isDayPhase = phase === Phase.DAY_DISCUSSION || phase === Phase.DAY_DEFENSE ||
+    phase === Phase.DAY_VOTING || phase === Phase.DAY_ANNOUNCEMENT;
+
+  // === מי ניתן לבחירה ===
+  const getTargetable = (playerId: string): boolean => {
+    if (playerId === myId) return false;
+    const player = players.find((p) => p.id === playerId);
+    if (!player?.isAlive) return false;
+
+    if (showDetectiveAction && !selectedTarget) return true;
+    if (showKillerAction && !selectedTarget) return true;
+    if (phase === Phase.DAY_DISCUSSION && isAlive) return true;
+
+    return false;
+  };
+
+  // === לחיצה על מושב ===
+  const handleSeatSelect = (playerId: string) => {
+    if (showDetectiveAction || showKillerAction) {
+      setSelectedTarget(playerId);
+      nightAction(playerId);
+    } else if (phase === Phase.DAY_DISCUSSION) {
+      accuse(playerId);
+    }
+  };
+
+  // === שמות לטקסט מנחה ===
+  const killedPlayer = players.find((p) => p.id === gameState.killedPlayerId);
+  const eliminatedPlayer = players.find((p) => p.id === gameState.eliminatedPlayerId);
+
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="bg-killer-surface/50 border-b border-killer-text-dim/10 px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold">{phaseLabels[phase] || phase}</h1>
-            {round > 0 && (
-              <p className="text-killer-text-dim text-xs">סיבוב {round}</p>
-            )}
-          </div>
-          {roleBadge}
-        </div>
-      </header>
+    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden">
+      {/* שכבת לילה */}
+      {isNight && (
+        <div className="fixed inset-0 bg-killer-night/90 z-10 transition-opacity duration-1000" />
+      )}
 
-      {/* Main content */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-4 space-y-4">
-        {/* הודעת מנחה */}
-        <NarratorBanner messages={narratorMessages} />
-
-        {/* שלב לילה - שחקן פאסיבי */}
-        {showNightWaiting && (
-          <div className="night-overlay">
-            <div className="text-center">
-              <p className="text-4xl mb-4">🌙</p>
-              <h2 className="text-2xl font-bold mb-2">לילה יורד על העיירה...</h2>
-              <p className="text-killer-text-dim">
-                {!isAlive
-                  ? 'את/ה צופה מהצד...'
-                  : 'עצום/י עיניים והמתן/י...'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* פאנל בלש */}
-        {showDetectivePanel && (
-          <NightActionPanel
-            role="detective"
-            players={players}
-            myId={myId}
-            detectiveResult={detectiveResult}
-            onSelectTarget={nightAction}
+      {/* שולחן פוקר */}
+      <div className="relative z-20 w-full h-screen flex items-center justify-center">
+        <PokerTable isNight={isNight} isMobile={isMobile}>
+          {/* מנחה */}
+          <NarratorSeat
+            phase={phase}
+            round={round}
+            killedPlayerName={killedPlayer?.displayName}
+            accusedPlayerName={accusedPlayer?.displayName}
+            eliminatedPlayerName={eliminatedPlayer?.displayName}
+            winner={winner}
+            isMobile={isMobile}
           />
-        )}
 
-        {/* פאנל רוצח */}
-        {showKillerPanel && (
-          <NightActionPanel
-            role="killer"
-            players={players}
-            myId={myId}
-            onSelectTarget={nightAction}
-          />
-        )}
+          {/* מושבי שחקנים */}
+          {players.map((player, index) => {
+            const relIndex = (index - (myIndex >= 0 ? myIndex : 0) + players.length) % players.length;
+            const pos = seatPositions[relIndex];
+            if (!pos) return null;
 
-        {/* וידאו - שלבי יום */}
-        {(phase === Phase.DAY_DISCUSSION ||
-          phase === Phase.DAY_DEFENSE ||
-          phase === Phase.DAY_VOTING ||
-          phase === Phase.DAY_ANNOUNCEMENT) && (
-          <VideoGrid
-            players={players}
-            myId={myId}
-            localStream={localStream}
-            remoteStreams={remoteStreams}
-            mediaError={mediaError}
-            isMicOn={isMicOn}
-            isCameraOn={isCameraOn}
-            onToggleMic={toggleMic}
-            onToggleCamera={toggleCamera}
-          />
-        )}
-
-        {/* שלב יום */}
-        {(phase === Phase.DAY_DISCUSSION ||
-          phase === Phase.DAY_DEFENSE ||
-          phase === Phase.DAY_VOTING ||
-          phase === Phase.DAY_ANNOUNCEMENT) && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* רשימת שחקנים */}
-            <div className="md:col-span-1">
-              <PlayerList players={players} myId={myId} />
-
-              {/* כפתור סיום דיון למארח */}
-              {phase === Phase.DAY_DISCUSSION && isHost && (
-                <button
-                  onClick={endDiscussion}
-                  className="btn-secondary w-full mt-3 text-sm"
-                >
-                  סיום דיון → לילה
-                </button>
-              )}
-            </div>
-
-            {/* אזור דיון/הצבעה */}
-            <div className="md:col-span-2">
-              <VotingPanel
-                phase={phase}
-                accusedPlayer={accusedPlayer}
-                players={players}
-                myId={myId}
-                votes={votes}
-                onAccuse={accuse}
-                onVote={vote}
+            return (
+              <PlayerSeat
+                key={player.id}
+                player={player}
+                isSelf={player.id === myId}
+                myRole={player.id === myId ? myRole : undefined}
+                myCard={player.id === myId ? myCard : undefined}
+                position={pos}
+                isTargetable={getTargetable(player.id)}
+                isTargetableBlue={showDetectiveAction && getTargetable(player.id)}
+                isSelected={selectedTarget === player.id}
+                isAccused={player.id === accusedPlayerId}
+                isDead={!player.isAlive}
+                isBeingKilled={showKillAnim && player.id === killedPlayerId}
+                hasVoted={votes[player.id] !== undefined}
+                voteValue={votes[player.id]}
+                onSelect={handleSeatSelect}
+                videoStream={
+                  player.id === myId
+                    ? localStream
+                    : remoteStreams.get(player.id) ?? null
+                }
+                isMobile={isMobile}
               />
+            );
+          })}
 
-              {/* הודעה למתים */}
-              {!isAlive && (
-                <div className="mt-4 bg-killer-bg/50 rounded-xl p-4 text-center text-killer-text-dim">
-                  <p>💀 את/ה מחוץ למשחק. צופה בשקט...</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+          {/* מרכז שולחן */}
+          <TableCenter
+            phase={phase}
+            isHost={isHost}
+            isAlive={isAlive}
+            myId={myId}
+            accusedPlayer={accusedPlayer}
+            votes={votes}
+            isAccused={isAccused}
+            detectiveResult={detectiveResult}
+            showNightAction={showNightAction}
+            nightRole={showDetectiveAction ? 'detective' : showKillerAction ? 'killer' : undefined}
+            isNightWaiting={isNightWaiting}
+            onEndDiscussion={endDiscussion}
+            onVote={vote}
+            isMobile={isMobile}
+          />
+        </PokerTable>
+      </div>
 
-        {/* הכרזת בוקר */}
-        {phase === Phase.DAY_ANNOUNCEMENT && (
-          <div className="text-center py-12">
-            <p className="text-5xl mb-4">☀️</p>
-            <h2 className="text-2xl font-bold">בוקר טוב עיירה!</h2>
-          </div>
-        )}
-      </main>
+      {/* בקרי מדיה */}
+      {isDayPhase && (
+        <MediaControls
+          isMicOn={isMicOn}
+          isCameraOn={isCameraOn}
+          onToggleMic={toggleMic}
+          onToggleCamera={toggleCamera}
+        />
+      )}
     </div>
   );
 }

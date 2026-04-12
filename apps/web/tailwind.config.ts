@@ -21,6 +21,21 @@ const config: Config = {
           'text-dim': '#888888',
           night: '#050510',
         },
+        poker: {
+          felt: '#2d0a0a',
+          'felt-light': '#3d1515',
+          wood: '#5C3317',
+          'wood-light': '#8B5A2B',
+          'wood-dark': '#3B1F0B',
+          'card-back': '#4a0e0e',
+          'card-gold': '#C5A55A',
+        },
+        blood: {
+          DEFAULT: '#8B0000',
+          bright: '#CC0000',
+          dark: '#4a0000',
+          drip: '#6B0000',
+        },
       },
       fontFamily: {
         game: ['Rubik', 'Arial', 'sans-serif'],
