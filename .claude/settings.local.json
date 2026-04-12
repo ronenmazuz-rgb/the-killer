@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sL \"https://raw.githubusercontent.com/pbakaus/impeccable/main/.claude/skills/impeccable/SKILL.md\" -o ~/.claude/skills/impeccable/SKILL.md)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/pbakaus/impeccable/main/.claude/skills/animate/SKILL.md\" -o ~/.claude/skills/animate/SKILL.md)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/pbakaus/impeccable/main/.claude/skills/polish/SKILL.md\" -o ~/.claude/skills/polish/SKILL.md)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/pbakaus/impeccable/main/.claude/skills/layout/SKILL.md\" -o ~/.claude/skills/layout/SKILL.md)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/pbakaus/impeccable/main/.claude/skills/harden/SKILL.md\" -o ~/.claude/skills/harden/SKILL.md)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/pbakaus/impeccable/main/.claude/skills/adapt/SKILL.md\" -o ~/.claude/skills/adapt/SKILL.md)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/pbakaus/impeccable/main/.claude/skills/audit/SKILL.md\" -o ~/.claude/skills/audit/SKILL.md)",
+      "Bash(curl -s 'https://api.github.com/repos/pbakaus/impeccable/contents/.claude/skills/__TRACKED_VAR__?ref=main' -H 'Accept: application/vnd.github.v3+json')",
+      "Bash(curl -s \"https://api.github.com/repos/pbakaus/impeccable/contents/.claude/skills/impeccable/reference?ref=main\" -H \"Accept: application/vnd.github.v3+json\")",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(f'{f[\\\\\"name\\\\\"]} \\({f[\\\\\"type\\\\\"]}\\)'\\) for f in data]\")",
+      "Bash(curl -s \"https://api.github.com/repos/pbakaus/impeccable/contents/.claude/skills/impeccable/scripts?ref=main\" -H \"Accept: application/vnd.github.v3+json\")",
+      "Bash(curl -s \"https://api.github.com/repos/Asher-pro/fullstack-app/contents/?ref=main\" -H \"Accept: application/vnd.github.v3+json\")",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(f['name'], f['type']\\) for f in data]\")",
+      "Bash(curl -s \"https://api.github.com/repos/Asher-pro/fullstack-app/contents/fullstack-app?ref=main\" -H \"Accept: application/vnd.github.v3+json\")",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/Asher-pro/fullstack-app/main/fullstack-app/SKILL.md\")",
+      "Bash(mkdir -p ~/.claude/skills/fullstack-app)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/Asher-pro/fullstack-app/main/fullstack-app/SKILL.md\" -o ~/.claude/skills/fullstack-app/SKILL.md)",
+      "Bash(npm install:*)"
+    ]
+  }
+}

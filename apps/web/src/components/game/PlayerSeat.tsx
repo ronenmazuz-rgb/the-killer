@@ -167,9 +167,9 @@ export default function PlayerSeat({
         />
       </div>
 
-      {/* אינדיקטור הצבעה */}
+      {/* אינדיקטור הצבעה — מראה שהשחקן הצביע */}
       <AnimatePresence>
-        {hasVoted && voteValue !== undefined && (
+        {hasVoted && (
           <motion.span
             key="vote"
             initial={{ scale: 0, y: -10 }}
@@ -177,7 +177,7 @@ export default function PlayerSeat({
             exit={{ scale: 0 }}
             className="absolute -top-3 -left-1 text-xl drop-shadow-lg"
           >
-            {voteValue ? '👎' : '👍'}
+            🗳️
           </motion.span>
         )}
       </AnimatePresence>

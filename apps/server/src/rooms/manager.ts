@@ -25,7 +25,7 @@ export interface GameRoom {
 
   // Day tracking
   accusedPlayerId: string | null;
-  votes: Map<string, boolean>;
+  votes: Map<string, string>; // voterId → targetPlayerId
 
   // Death tracking
   killedThisNight: string | null;

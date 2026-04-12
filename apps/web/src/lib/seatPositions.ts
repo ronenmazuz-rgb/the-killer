@@ -1,6 +1,7 @@
 /**
  * חישוב מיקומי מושבים מסביב לשולחן אובלי
  * השחקן הנוכחי תמיד בתחתית, המנחה בראש
+ * האלגוריתם מחלק שחקנים בצורה סימטרית — זוגות ימין/שמאל
  */
 
 export interface SeatPosition {
@@ -10,11 +11,11 @@ export interface SeatPosition {
 }
 
 /**
- * מחשב מיקומי מושבים על אליפסה
+ * מחשב מיקומי מושבים על אליפסה בצורה סימטרית
  * @param playerCount מספר שחקנים (לא כולל מנחה)
  * @param myIndex האינדקס שלי במערך השחקנים
  * @param isMobile האם מובייל
- * @returns מערך מיקומים — אינדקס 0 = אני (תחתית), השאר בכיוון השעון
+ * @returns מערך מיקומים — אינדקס 0 = אני (תחתית), השאר בסימטריה
  */
 export function calculateSeatPositions(
   playerCount: number,
@@ -22,7 +23,6 @@ export function calculateSeatPositions(
   isMobile = false,
 ): SeatPosition[] {
   // רדיוסי האליפסה (באחוזים מהמיכל)
-  // גדולים יותר כדי שיהיה מקום לעיגולי וידאו גדולים
   const a = isMobile ? 44 : 47; // חצי-ציר אופקי
   const b = isMobile ? 38 : 42; // חצי-ציר אנכי
 
@@ -31,31 +31,42 @@ export function calculateSeatPositions(
 
   const positions: SeatPosition[] = [];
 
-  // מפזר N שחקנים על האליפסה
-  // השחקן הנוכחי (myIndex) תמיד בתחתית (270° = 3π/2)
-  // השחקנים מסודרים בכיוון השעון מהתחתית
+  // חישוב פרמטרי פיזור סימטרי:
+  // - nOthers = מספר שחקנים פרט לי
+  // - hasTop = האם יש שחקן אחד שמוצב בדיוק בראש (כשnOthers אי-זוגי)
+  // - nPairs = מספר זוגות (ימין + שמאל)
+  // - stepDeg = מרווח זוויתי בין זוגות
+  const nOthers = playerCount - 1;
+  const hasTop = nOthers % 2 === 1;
+  const nPairs = Math.floor(nOthers / 2);
 
-  // אנחנו מפזרים שחקנים על 330° (פתח של 30° בראש שמור למנחה)
-  // הפיזור הוא סימטרי סביב הציר האנכי
-  // השחקן הנוכחי (relIndex 0) תמיד בתחתית (270°)
-  const arcGapDeg = 30; // פתח בראש (מעלות) — שמור למנחה
-  const totalArcRad = (360 - arcGapDeg) * (Math.PI / 180); // 330° ברדיאנים
+  // חלוקת 330° בין כל ה"חריצים" (כולל אני בתחתית)
+  // totalDenominator = מספר חריצים = nPairs*2 + (top ? 1 : 0) + 1 (אני)
+  const totalDenominator = 2 * nPairs + (hasTop ? 1 : 0) + 1;
+  const stepDeg = nOthers > 0 ? 330 / totalDenominator : 0;
 
   for (let i = 0; i < playerCount; i++) {
-    const relativeIndex = (i - myIndex + playerCount) % playerCount;
+    const relIndex = (i - myIndex + playerCount) % playerCount;
+    let angleDeg: number;
 
-    let angle: number;
     if (playerCount === 1) {
-      angle = (3 * Math.PI) / 2; // תחתית בלבד
+      angleDeg = 270; // רק אני — תחתית
+    } else if (relIndex === 0) {
+      angleDeg = 270; // אני — תמיד בתחתית
+    } else if (hasTop && relIndex === nOthers) {
+      // שחקן בראש — כשמספר האחרים אי-זוגי, האחרון הולך לראש
+      angleDeg = 90;
     } else {
-      // מפזר N שחקנים על 330°, מתחיל ב-270° (תחתית)
-      // relIndex 0 = 270°, ממשיך בכיוון ה-RTL (נגד כיוון השעון בתצוגה)
-      // כלומר מסתובב ב +totalArc/N כל פעם
-      const step = totalArcRad / playerCount;
-      const startAngle = (3 * Math.PI) / 2;
-      angle = startAngle + step * relativeIndex;
+      // זוגות סימטריים:
+      // relIndex אי-זוגי (1, 3, 5, ...) → ימין (270° + offset)
+      // relIndex זוגי (2, 4, 6, ...) → שמאל (270° - offset)
+      const pairNumber = Math.ceil(relIndex / 2); // 1, 1, 2, 2, 3, 3 ...
+      const isRight = relIndex % 2 === 1;
+      const offset = pairNumber * stepDeg;
+      angleDeg = isRight ? 270 + offset : 270 - offset;
     }
 
+    const angle = (angleDeg * Math.PI) / 180;
     const x = centerX + a * Math.cos(angle);
     const y = centerY - b * Math.sin(angle);
 

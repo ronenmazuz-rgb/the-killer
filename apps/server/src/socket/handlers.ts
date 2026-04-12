@@ -15,7 +15,6 @@ import {
   startGame,
   handleDetectiveAction,
   handleKillerAction,
-  handleAccusation,
   handleVote,
   handleEndDiscussion,
 } from '../game/engine';
@@ -108,18 +107,11 @@ export function registerHandlers(io: Server, socket: Socket): void {
     }
   });
 
-  // === האשמה ===
-  socket.on(CLIENT_EVENTS.DAY_ACCUSE, ({ targetPlayerId }: { targetPlayerId: string }) => {
+  // === הצבעה — בוחר שחקן ספציפי (רוב יחסי) ===
+  socket.on(CLIENT_EVENTS.DAY_VOTE, ({ targetPlayerId }: { targetPlayerId: string }) => {
     const room = getRoomByPlayer(socket.id);
     if (!room) return;
-    handleAccusation(room, socket.id, targetPlayerId, io);
-  });
-
-  // === הצבעה ===
-  socket.on(CLIENT_EVENTS.DAY_VOTE, ({ guilty }: { guilty: boolean }) => {
-    const room = getRoomByPlayer(socket.id);
-    if (!room) return;
-    handleVote(room, socket.id, guilty, io);
+    handleVote(room, socket.id, targetPlayerId, io);
   });
 
   // === סיום דיון ===

@@ -87,12 +87,8 @@ export function useSocket() {
     getSocket().emit(CLIENT_EVENTS.NIGHT_ACTION, { targetPlayerId });
   }, []);
 
-  const accuse = useCallback((targetPlayerId: string) => {
-    getSocket().emit(CLIENT_EVENTS.DAY_ACCUSE, { targetPlayerId });
-  }, []);
-
-  const vote = useCallback((guilty: boolean) => {
-    getSocket().emit(CLIENT_EVENTS.DAY_VOTE, { guilty });
+  const vote = useCallback((targetPlayerId: string) => {
+    getSocket().emit(CLIENT_EVENTS.DAY_VOTE, { targetPlayerId });
   }, []);
 
   const endDiscussion = useCallback(() => {
@@ -108,7 +104,6 @@ export function useSocket() {
     joinRoom,
     startGame,
     nightAction,
-    accuse,
     vote,
     endDiscussion,
     sendChat,

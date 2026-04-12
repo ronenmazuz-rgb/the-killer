@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Player, Phase } from '@the-killer/shared';
 
@@ -9,16 +9,26 @@ interface TableCenterProps {
   isHost: boolean;
   isAlive: boolean;
   myId: string;
-  accusedPlayer?: Player;
-  votes: Record<string, boolean>;
-  isAccused: boolean;
+  alivePlayers: Player[]; // כל השחקנים החיים (לרשימת הצבעה)
+  votes: Record<string, string>; // voterId → targetId
   detectiveResult?: 'killer' | 'citizen';
   showNightAction: boolean;
   nightRole?: 'detective' | 'killer';
   isNightWaiting: boolean;
+  discussionTimeRemaining?: number; // מילישניות שנשארו לדיון
   onEndDiscussion: () => void;
-  onVote: (guilty: boolean) => void;
+  onVote: (targetPlayerId: string) => void;
   isMobile?: boolean;
+}
+
+/**
+ * פורמט שניות → mm:ss
+ */
+function formatTime(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, '0')}`;
 }
 
 export default function TableCenter({
@@ -26,27 +36,51 @@ export default function TableCenter({
   isHost,
   isAlive,
   myId,
-  accusedPlayer,
+  alivePlayers,
   votes,
-  isAccused,
   detectiveResult,
   showNightAction,
   nightRole,
   isNightWaiting,
+  discussionTimeRemaining,
   onEndDiscussion,
   onVote,
   isMobile,
 }: TableCenterProps) {
-  const [hasVoted, setHasVoted] = useState(false);
+  const [myVote, setMyVote] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(discussionTimeRemaining ?? 0);
 
-  // Reset vote state on phase change
-  if (phase !== 'day_voting' && hasVoted) {
-    setHasVoted(false);
-  }
+  // Reset vote on phase change
+  useEffect(() => {
+    if (phase !== 'day_voting') {
+      setMyVote(null);
+    }
+  }, [phase]);
+
+  // Countdown timer for discussion phase
+  useEffect(() => {
+    if (phase !== 'day_discussion' || !discussionTimeRemaining) {
+      setTimeLeft(discussionTimeRemaining ?? 0);
+      return;
+    }
+
+    setTimeLeft(discussionTimeRemaining);
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [phase, discussionTimeRemaining]);
+
+  // קולות שקיבל כל שחקן בהצבעה
+  const voteCountForPlayer = (playerId: string): number =>
+    Object.values(votes).filter((v) => v === playerId).length;
 
   const totalVotes = Object.keys(votes).length;
-  const guiltyCount = Object.values(votes).filter((v) => v).length;
-  const innocentCount = totalVotes - guiltyCount;
+  const isUrgent = timeLeft < 15000 && timeLeft > 0;
+
+  // שחקנים שניתן להצביע עליהם = כל השחקנים החיים פרט לי
+  const votablePlayers = alivePlayers.filter((p) => p.id !== myId);
 
   return (
     <div
@@ -56,8 +90,8 @@ export default function TableCenter({
         top: '50%',
         transform: 'translate(-50%, -50%)',
         zIndex: 28,
-        width: isMobile ? '70%' : '50%',
-        maxWidth: '380px',
+        width: isMobile ? '72%' : '52%',
+        maxWidth: '400px',
       }}
     >
       <AnimatePresence mode="wait">
@@ -89,9 +123,7 @@ export default function TableCenter({
             <h3 className="text-lg font-bold mb-1">
               {nightRole === 'detective' ? '🔍 בחר/י חשוד' : '🔪 בחר/י קורבן'}
             </h3>
-            <p className="text-killer-text-dim text-xs">
-              לחץ/י על שחקן בשולחן
-            </p>
+            <p className="text-killer-text-dim text-xs">לחץ/י על שחקן בשולחן</p>
 
             {/* תוצאת בלש */}
             {detectiveResult && (
@@ -123,105 +155,113 @@ export default function TableCenter({
           </motion.div>
         )}
 
-        {/* === דיון === */}
+        {/* === דיון חופשי — 60 שניות עם ספירה לאחור === */}
         {phase === 'day_discussion' && (
           <motion.div
             key="discussion"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="text-center pointer-events-auto"
+            className="text-center pointer-events-auto w-full"
           >
-            <p className="text-sm text-killer-text-dim mb-2">
-              💬 לחצו על שחקן כדי להאשים
-            </p>
+            {/* שעון ספירה לאחור */}
+            <motion.div
+              className={`text-4xl font-bold mb-2 font-mono ${
+                isUrgent ? 'text-killer-red' : 'text-killer-gold'
+              }`}
+              animate={isUrgent ? { scale: [1, 1.05, 1] } : {}}
+              transition={{ repeat: Infinity, duration: 1 }}
+            >
+              {formatTime(timeLeft)}
+            </motion.div>
+            <p className="text-killer-text-dim text-xs mb-3">💬 זמן לדון — מי הרוצח?</p>
             {isHost && (
               <button
                 onClick={onEndDiscussion}
                 className="btn-secondary text-xs px-4 py-2"
               >
-                סיום דיון → לילה
+                דלג להצבעה →
               </button>
             )}
           </motion.div>
         )}
 
-        {/* === הגנה === */}
-        {phase === 'day_defense' && accusedPlayer && (
-          <motion.div
-            key="defense"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="text-center pointer-events-auto bg-red-950/30 rounded-xl p-4 border border-killer-red/20"
-          >
-            <h3 className="text-base font-bold text-killer-red mb-1">
-              ⚖️ {accusedPlayer.displayName} על הכוונת!
-            </h3>
-            <p className="text-killer-text-dim text-xs">
-              {isAccused ? 'הגן/י על עצמך!' : 'ממתינים להגנה...'}
-            </p>
-          </motion.div>
-        )}
-
-        {/* === הצבעה === */}
-        {phase === 'day_voting' && accusedPlayer && (
+        {/* === הצבעה — כל שחקן חי = מועמד === */}
+        {phase === 'day_voting' && (
           <motion.div
             key="voting"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="text-center pointer-events-auto bg-killer-surface/80 rounded-xl p-4 border border-killer-text-dim/20"
+            className="w-full pointer-events-auto bg-killer-surface/85 rounded-xl p-3 border border-killer-text-dim/20"
           >
-            <h3 className="text-sm font-bold mb-2">
-              האם {accusedPlayer.displayName} אשם/ה?
+            <h3 className="text-sm font-bold mb-2 text-center">
+              🗳️ מי הרוצח? ({totalVotes}/{alivePlayers.length} הצביעו)
             </h3>
 
-            {/* ספירת קולות */}
-            <div className="flex justify-center gap-6 mb-3">
-              <div className="text-center">
-                <p className="text-killer-red font-bold text-xl">{guiltyCount}</p>
-                <p className="text-killer-text-dim text-[10px]">אשם/ה</p>
+            {/* רשימת מועמדים */}
+            {isAlive && !myVote ? (
+              <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                {votablePlayers.map((player) => (
+                  <button
+                    key={player.id}
+                    onClick={() => {
+                      setMyVote(player.id);
+                      onVote(player.id);
+                    }}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg
+                      bg-killer-bg/60 hover:bg-killer-red/20 border border-white/10
+                      hover:border-killer-red/40 transition-all text-sm font-medium text-left"
+                  >
+                    <span>{player.displayName}</span>
+                    {voteCountForPlayer(player.id) > 0 && (
+                      <span className="text-killer-red text-xs font-bold">
+                        {voteCountForPlayer(player.id)} 🗳️
+                      </span>
+                    )}
+                  </button>
+                ))}
               </div>
-              <div className="text-center">
-                <p className="text-green-400 font-bold text-xl">{innocentCount}</p>
-                <p className="text-killer-text-dim text-[10px]">חף/ה</p>
-              </div>
-            </div>
-
-            {/* כפתורי הצבעה */}
-            {isAlive && !isAccused && !hasVoted && (
-              <div className={`flex gap-2 ${isMobile ? 'flex-col' : ''}`}>
-                <button
-                  onClick={() => { setHasVoted(true); onVote(true); }}
-                  className="flex-1 bg-red-900/50 hover:bg-red-800/60 border border-killer-red/30
-                    rounded-lg py-2 text-sm font-bold text-killer-red transition-all"
-                >
-                  אשם/ה 👎
-                </button>
-                <button
-                  onClick={() => { setHasVoted(true); onVote(false); }}
-                  className="flex-1 bg-green-900/30 hover:bg-green-800/40 border border-green-500/30
-                    rounded-lg py-2 text-sm font-bold text-green-400 transition-all"
-                >
-                  חף/ה 👍
-                </button>
+            ) : (
+              /* אחרי הצבעה — הצג תוצאות */
+              <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                {alivePlayers.map((player) => {
+                  const count = voteCountForPlayer(player.id);
+                  const isLeading = count > 0 && count === Math.max(...alivePlayers.map(p => voteCountForPlayer(p.id)));
+                  return (
+                    <div
+                      key={player.id}
+                      className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs ${
+                        isLeading
+                          ? 'bg-killer-red/20 border border-killer-red/40 text-killer-red font-bold'
+                          : 'bg-killer-bg/40 border border-white/5 text-killer-text-dim'
+                      }`}
+                    >
+                      <span>{player.displayName}</span>
+                      <span>{count > 0 ? `${count} 🗳️` : '—'}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
-            {hasVoted && (
-              <p className="text-killer-text-dim text-xs mt-1">✓ הצבעתך נרשמה</p>
+            {myVote && (
+              <p className="text-killer-text-dim text-xs mt-2 text-center">
+                ✓ הצבעתך נרשמה
+              </p>
             )}
-            {isAccused && (
-              <p className="text-killer-text-dim text-xs mt-1">את/ה הנאשם/ת</p>
+            {!isAlive && (
+              <p className="text-killer-text-dim text-xs mt-2 text-center">
+                💀 צופה בהצבעה
+              </p>
             )}
           </motion.div>
         )}
 
-        {/* === שחקן מת === */}
+        {/* === שחקן מת (לא בהצבעה ולא בלילה) === */}
         {!isAlive && phase !== 'game_over' &&
-          !isNightWaiting &&
-          phase !== 'day_announcement' && (
+          !isNightWaiting && phase !== 'day_announcement' &&
+          phase !== 'day_voting' && (
           <motion.div
             key="dead"
             initial={{ opacity: 0 }}

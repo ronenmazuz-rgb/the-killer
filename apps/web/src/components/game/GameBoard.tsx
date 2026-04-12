@@ -17,7 +17,7 @@ import MediaControls from './MediaControls';
 
 export default function GameBoard() {
   const { gameState, narratorMessages, roomCode } = useGameStore();
-  const { nightAction, accuse, vote, endDiscussion } = useSocket();
+  const { nightAction, vote, endDiscussion } = useSocket();
   const [cardRevealed, setCardRevealed] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [killedPlayerId, setKilledPlayerId] = useState<string | null>(null);
@@ -61,11 +61,8 @@ export default function GameBoard() {
       case Phase.DAY_DISCUSSION:
         SoundManager.setAmbience('dayAmbience');
         break;
-      case Phase.DAY_DEFENSE:
       case Phase.DAY_VOTING:
         SoundManager.setAmbience('tension');
-        break;
-      case Phase.DAY_ACCUSATION:
         SoundManager.play('gavel');
         break;
       case Phase.DEALING_CARDS:
@@ -104,7 +101,6 @@ export default function GameBoard() {
     myCard,
     myId,
     hostId,
-    accusedPlayerId,
     votes,
     detectiveResult,
     winner,
@@ -113,9 +109,7 @@ export default function GameBoard() {
 
   const myPlayer = players.find((p) => p.id === myId);
   const isAlive = myPlayer?.isAlive ?? false;
-  const accusedPlayer = players.find((p) => p.id === accusedPlayerId);
   const isHost = myId === hostId;
-  const isAccused = myId === accusedPlayerId;
 
   // חשיפת קלף
   if (phase === Phase.DEALING_CARDS && myCard && myRole && !cardRevealed) {
@@ -152,10 +146,10 @@ export default function GameBoard() {
   const showKillerAction = phase === Phase.NIGHT_KILLER && myRole === 'killer' && isAlive;
   const showNightAction = showDetectiveAction || showKillerAction;
   const isNightWaiting = isNight && !showNightAction;
-  const isDayPhase = phase === Phase.DAY_DISCUSSION || phase === Phase.DAY_DEFENSE ||
+  const isDayPhase = phase === Phase.DAY_DISCUSSION ||
     phase === Phase.DAY_VOTING || phase === Phase.DAY_ANNOUNCEMENT;
 
-  // === מי ניתן לבחירה ===
+  // === מי ניתן לבחירה (רק בלילה) ===
   const getTargetable = (playerId: string): boolean => {
     if (playerId === myId) return false;
     const player = players.find((p) => p.id === playerId);
@@ -163,20 +157,20 @@ export default function GameBoard() {
 
     if (showDetectiveAction && !selectedTarget) return true;
     if (showKillerAction && !selectedTarget) return true;
-    if (phase === Phase.DAY_DISCUSSION && isAlive) return true;
 
     return false;
   };
 
-  // === לחיצה על מושב ===
+  // === לחיצה על מושב (רק בלילה) ===
   const handleSeatSelect = (playerId: string) => {
     if (showDetectiveAction || showKillerAction) {
       setSelectedTarget(playerId);
       nightAction(playerId);
-    } else if (phase === Phase.DAY_DISCUSSION) {
-      accuse(playerId);
     }
   };
+
+  // שחקנים חיים (לרשימת הצבעה)
+  const alivePlayers = players.filter((p) => p.isAlive);
 
   // === שמות לטקסט מנחה ===
   const killedPlayer = players.find((p) => p.id === gameState.killedPlayerId);
@@ -197,7 +191,6 @@ export default function GameBoard() {
             phase={phase}
             round={round}
             killedPlayerName={killedPlayer?.displayName}
-            accusedPlayerName={accusedPlayer?.displayName}
             eliminatedPlayerName={eliminatedPlayer?.displayName}
             winner={winner}
             isMobile={isMobile}
@@ -220,11 +213,11 @@ export default function GameBoard() {
                 isTargetable={getTargetable(player.id)}
                 isTargetableBlue={showDetectiveAction && getTargetable(player.id)}
                 isSelected={selectedTarget === player.id}
-                isAccused={player.id === accusedPlayerId}
+                isAccused={false}
                 isDead={!player.isAlive}
                 isBeingKilled={showKillAnim && player.id === killedPlayerId}
                 hasVoted={votes[player.id] !== undefined}
-                voteValue={votes[player.id]}
+                voteValue={undefined}
                 onSelect={handleSeatSelect}
                 videoStream={
                   player.id === myId
@@ -242,13 +235,13 @@ export default function GameBoard() {
             isHost={isHost}
             isAlive={isAlive}
             myId={myId}
-            accusedPlayer={accusedPlayer}
+            alivePlayers={alivePlayers}
             votes={votes}
-            isAccused={isAccused}
             detectiveResult={detectiveResult}
             showNightAction={showNightAction}
             nightRole={showDetectiveAction ? 'detective' : showKillerAction ? 'killer' : undefined}
             isNightWaiting={isNightWaiting}
+            discussionTimeRemaining={gameState.timeRemaining}
             onEndDiscussion={endDiscussion}
             onVote={vote}
             isMobile={isMobile}

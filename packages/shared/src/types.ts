@@ -67,7 +67,7 @@ export interface ClientGameState {
   myRole?: Role;
   myCard?: Card;
   accusedPlayerId?: string;
-  votes: Record<string, boolean>;
+  votes: Record<string, string>; // voterId → targetPlayerId
   killedPlayerId?: string;
   eliminatedPlayerId?: string;
   detectiveResult?: 'killer' | 'citizen';

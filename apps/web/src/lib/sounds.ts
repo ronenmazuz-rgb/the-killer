@@ -174,24 +174,43 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
 
 /**
  * הקראת טקסט בעברית (TTS)
+ * rate=1.0 (מהירות רגילה), pitch=1.0 (גובה רגיל) — למניעת גמגום
  */
-export function narratorSpeak(text: string, rate = 0.9) {
+export function narratorSpeak(text: string, rate = 1.0) {
   if (typeof window === 'undefined' || !window.speechSynthesis || isMuted) return;
 
-  // ביטול הקראה קודמת
-  window.speechSynthesis.cancel();
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'he-IL';
-  utterance.rate = rate;
-  utterance.pitch = 0.8; // קול נמוך ודרמטי
-  utterance.volume = masterVolume;
-
-  if (ttsVoice) {
-    utterance.voice = ttsVoice;
+  // ניסיון נוסף לאתחל קול אם עדיין לא קיים
+  if (!ttsVoice) {
+    initHebrewVoice();
   }
 
-  window.speechSynthesis.speak(utterance);
+  // ביטול הקראה קודמת — workaround לבאג Chrome שלפעמים תוקע
+  window.speechSynthesis.cancel();
+
+  // עיכוב קטן אחרי cancel (Chrome bug workaround)
+  setTimeout(() => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'he-IL';
+    utterance.rate = rate;
+    utterance.pitch = 1.0; // גובה רגיל — pitch נמוך גורם לגמגום בחלק מהדפדפנים
+    utterance.volume = Math.min(1, masterVolume * 1.2); // קצת יותר חזק
+
+    if (ttsVoice) {
+      utterance.voice = ttsVoice;
+    }
+
+    // Chrome bug: לפעמים הדיבור נתקע אחרי כמה שניות — resume כל שנייה
+    const resumeTimer = setInterval(() => {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+    }, 1000);
+
+    utterance.onend = () => clearInterval(resumeTimer);
+    utterance.onerror = () => clearInterval(resumeTimer);
+
+    window.speechSynthesis.speak(utterance);
+  }, 50);
 }
 
 /**

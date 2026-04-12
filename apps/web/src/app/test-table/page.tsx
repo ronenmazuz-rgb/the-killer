@@ -115,12 +115,12 @@ export default function TestTable() {
             isHost={true}
             isAlive={true}
             myId="me"
-            accusedPlayer={phase === Phase.DAY_DEFENSE || phase === Phase.DAY_VOTING ? mockPlayers[1] : undefined}
-            votes={{ p3: true, p5: false }}
-            isAccused={false}
+            alivePlayers={mockPlayers.filter(p => p.isAlive)}
+            votes={{ p3: 'p2', p5: 'p3' }}
             showNightAction={phase === Phase.NIGHT_DETECTIVE || phase === Phase.NIGHT_KILLER}
             nightRole={phase === Phase.NIGHT_DETECTIVE ? 'detective' : phase === Phase.NIGHT_KILLER ? 'killer' : undefined}
             isNightWaiting={false}
+            discussionTimeRemaining={45000}
             onEndDiscussion={() => console.log('End discussion')}
             onVote={(v) => console.log('Vote:', v)}
             isMobile={isMobile}

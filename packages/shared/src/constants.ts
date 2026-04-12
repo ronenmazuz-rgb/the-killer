@@ -8,9 +8,9 @@ export const TIMERS = {
   DETECTIVE_PHASE: 15000,   // 15 שניות לבלש
   KILLER_PHASE: 15000,      // 15 שניות לרוצח
   DAY_ANNOUNCEMENT: 5000,   // 5 שניות להכרזה
-  DEFENSE_PHASE: 30000,     // 30 שניות להגנה
-  VOTING_PHASE: 15000,      // 15 שניות להצבעה
-  DISCUSSION_MIN: 30000,    // 30 שניות מינימום לדיון
+  DEFENSE_PHASE: 30000,     // 30 שניות להגנה (deprecated)
+  VOTING_PHASE: 30000,      // 30 שניות להצבעה
+  DISCUSSION_PHASE: 60000,  // 60 שניות לדיון חופשי
 } as const;
 
 // === קודי חדר ===

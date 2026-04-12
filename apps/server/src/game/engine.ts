@@ -55,8 +55,6 @@ function transitionToNight(room: GameRoom, io: Server): void {
 }
 
 function transitionToKillerPhase(room: GameRoom, io: Server): void {
-  const killer = getAlivePlayers(room).find((p) => p.role === 'killer');
-
   room.phase = Phase.NIGHT_KILLER;
   room.phaseEndTime = Date.now() + TIMERS.KILLER_PHASE;
   broadcastState(room, io);
@@ -107,17 +105,43 @@ function transitionToDayAnnouncement(room: GameRoom, io: Server): void {
   }, TIMERS.DAY_ANNOUNCEMENT);
 }
 
+/**
+ * דיון חופשי — 60 שניות, ואז עובר אוטומטית להצבעה
+ */
 function transitionToDay(room: GameRoom, io: Server): void {
   room.phase = Phase.DAY_DISCUSSION;
   room.accusedPlayerId = null;
   room.eliminatedThisDay = null;
   room.votes.clear();
-  room.phaseEndTime = 0; // דיון חופשי - ללא טיימר קשיח
+  room.phaseEndTime = Date.now() + TIMERS.DISCUSSION_PHASE;
   broadcastState(room, io);
 
   io.to(room.code).emit('game:narrator', {
-    message: 'זמן דיון! מי לדעתכם הרוצח? כל שחקן יכול להאשים מישהו.',
+    message: 'זמן דיון! יש לכם 60 שניות לדון ולהחליט מי הרוצח. הצביעו בחכמה!',
   });
+
+  // אחרי 60 שניות — עבור להצבעה
+  room.phaseTimer = setTimeout(() => {
+    transitionToVoting(room, io);
+  }, TIMERS.DISCUSSION_PHASE);
+}
+
+/**
+ * שלב ההצבעה — כל שחקן חי בוחר למי להצביע (הצבעת רוב יחסי)
+ */
+function transitionToVoting(room: GameRoom, io: Server): void {
+  room.phase = Phase.DAY_VOTING;
+  room.votes.clear();
+  room.phaseEndTime = Date.now() + TIMERS.VOTING_PHASE;
+  broadcastState(room, io);
+
+  io.to(room.code).emit('game:narrator', {
+    message: 'הצבעה! בחרו מי לדעתכם הרוצח. השחקן עם הכי הרבה קולות יוצא מהמשחק!',
+  });
+
+  room.phaseTimer = setTimeout(() => {
+    resolveVote(room, io);
+  }, TIMERS.VOTING_PHASE);
 }
 
 export function handleDetectiveAction(
@@ -174,57 +198,14 @@ export function handleKillerAction(
   return true;
 }
 
-export function handleAccusation(
-  room: GameRoom,
-  accuserId: string,
-  targetId: string,
-  io: Server
-): boolean {
-  if (room.phase !== Phase.DAY_DISCUSSION) return false;
-
-  const accuser = room.players.get(accuserId);
-  if (!accuser || !accuser.isAlive) return false;
-
-  const target = room.players.get(targetId);
-  if (!target || !target.isAlive || targetId === accuserId) return false;
-
-  room.phase = Phase.DAY_DEFENSE;
-  room.accusedPlayerId = targetId;
-  room.votes.clear();
-  room.phaseEndTime = Date.now() + TIMERS.DEFENSE_PHASE;
-  broadcastState(room, io);
-
-  io.to(room.code).emit('game:narrator', {
-    message: `${accuser.displayName} מאשים/ה את ${target.displayName}! ל-${target.displayName} יש 30 שניות להגנה.`,
-  });
-
-  room.phaseTimer = setTimeout(() => {
-    transitionToVoting(room, io);
-  }, TIMERS.DEFENSE_PHASE);
-
-  return true;
-}
-
-function transitionToVoting(room: GameRoom, io: Server): void {
-  room.phase = Phase.DAY_VOTING;
-  room.votes.clear();
-  room.phaseEndTime = Date.now() + TIMERS.VOTING_PHASE;
-  broadcastState(room, io);
-
-  const accused = room.players.get(room.accusedPlayerId!);
-  io.to(room.code).emit('game:narrator', {
-    message: `הצביעו! האם ${accused?.displayName} אשם/ה? רוב קולות = הוצאה להורג.`,
-  });
-
-  room.phaseTimer = setTimeout(() => {
-    resolveVote(room, io);
-  }, TIMERS.VOTING_PHASE);
-}
-
+/**
+ * הצבעה — כל שחקן חי בוחר מי הרוצח לדעתו
+ * @param targetId מזהה השחקן שמצביעים נגדו
+ */
 export function handleVote(
   room: GameRoom,
   playerId: string,
-  guilty: boolean,
+  targetId: string,
   io: Server
 ): boolean {
   if (room.phase !== Phase.DAY_VOTING) return false;
@@ -232,16 +213,14 @@ export function handleVote(
   const player = room.players.get(playerId);
   if (!player || !player.isAlive) return false;
 
-  // הנאשם לא מצביע
-  if (playerId === room.accusedPlayerId) return false;
+  const target = room.players.get(targetId);
+  if (!target || !target.isAlive || targetId === playerId) return false;
 
-  room.votes.set(playerId, guilty);
+  room.votes.set(playerId, targetId);
   broadcastState(room, io);
 
   // בדוק אם כולם הצביעו
-  const aliveVoters = getAlivePlayers(room).filter(
-    (p) => p.id !== room.accusedPlayerId
-  );
+  const aliveVoters = getAlivePlayers(room);
   if (room.votes.size >= aliveVoters.length) {
     if (room.phaseTimer) clearTimeout(room.phaseTimer);
     resolveVote(room, io);
@@ -250,49 +229,77 @@ export function handleVote(
   return true;
 }
 
+/**
+ * פתרון הצבעה — רוב יחסי (הכי הרבה קולות)
+ * במקרה שיוויון — אף אחד לא מוצא
+ */
 function resolveVote(room: GameRoom, io: Server): void {
-  const guiltyVotes = Array.from(room.votes.values()).filter((v) => v).length;
-  const totalVoters = getAlivePlayers(room).filter(
-    (p) => p.id !== room.accusedPlayerId
-  ).length;
-  const majority = Math.floor(totalVoters / 2) + 1;
+  // ספירת קולות לכל שחקן
+  const voteCounts = new Map<string, number>();
+  for (const targetId of room.votes.values()) {
+    voteCounts.set(targetId, (voteCounts.get(targetId) ?? 0) + 1);
+  }
 
-  if (guiltyVotes >= majority) {
-    // הוצאה להורג
-    const accused = room.players.get(room.accusedPlayerId!);
-    if (accused) {
-      accused.isAlive = false;
-      room.eliminatedThisDay = room.accusedPlayerId!;
+  // מצא מקסימום קולות
+  let maxVotes = 0;
+  let leadingPlayers: string[] = [];
 
-      io.to(room.code).emit('game:narrator', {
-        message: `${accused.displayName} הוצא/ה להורג! התפקיד שלו/ה היה: ${getRoleDisplayName(accused.role)}.`,
-      });
-
-      // בדוק תנאי ניצחון
-      const winner = checkWinCondition(room);
-      if (winner) {
-        endGame(room, io, winner);
-        return;
-      }
+  for (const [playerId, count] of voteCounts) {
+    if (count > maxVotes) {
+      maxVotes = count;
+      leadingPlayers = [playerId];
+    } else if (count === maxVotes) {
+      leadingPlayers.push(playerId);
     }
+  }
 
-    // עבור ללילה
-    broadcastState(room, io);
-    room.phaseTimer = setTimeout(() => {
-      transitionToNight(room, io);
-    }, 3000);
-  } else {
-    // אין רוב - חזרה לדיון
+  const totalVoters = getAlivePlayers(room).length;
+
+  // שיוויון — אף אחד לא מוצא
+  if (leadingPlayers.length !== 1 || maxVotes === 0) {
     io.to(room.code).emit('game:narrator', {
-      message: `אין רוב קולות. ${room.players.get(room.accusedPlayerId!)?.displayName} נשאר/ת במשחק. הדיון ממשיך.`,
+      message: 'לא הוכרע — שיוויון בהצבעה. המשחק ממשיך ללילה.',
     });
 
     room.accusedPlayerId = null;
-    room.votes.clear();
-    transitionToDay(room, io);
+    broadcastState(room, io);
+
+    room.phaseTimer = setTimeout(() => {
+      transitionToNight(room, io);
+    }, 3000);
+    return;
   }
+
+  const eliminatedId = leadingPlayers[0];
+  const eliminated = room.players.get(eliminatedId);
+
+  if (eliminated) {
+    eliminated.isAlive = false;
+    room.eliminatedThisDay = eliminatedId;
+
+    io.to(room.code).emit('game:narrator', {
+      message: `${eliminated.displayName} הוצא/ה מהמשחק עם ${maxVotes} קולות מתוך ${totalVoters}! התפקיד שלו/ה היה: ${getRoleDisplayName(eliminated.role)}.`,
+    });
+
+    // בדוק תנאי ניצחון
+    const winner = checkWinCondition(room);
+    if (winner) {
+      broadcastState(room, io);
+      endGame(room, io, winner);
+      return;
+    }
+  }
+
+  // עבור ללילה
+  broadcastState(room, io);
+  room.phaseTimer = setTimeout(() => {
+    transitionToNight(room, io);
+  }, 3000);
 }
 
+/**
+ * המארח יכול לדחוף להצבעה מוקדמת (לפני סיום 60 שניות)
+ */
 export function handleEndDiscussion(
   room: GameRoom,
   playerId: string,
@@ -301,9 +308,8 @@ export function handleEndDiscussion(
   if (room.phase !== Phase.DAY_DISCUSSION) return false;
   if (playerId !== room.hostId) return false;
 
-  // המארח יכול לסיים את הדיון ולעבור ללילה
   if (room.phaseTimer) clearTimeout(room.phaseTimer);
-  transitionToNight(room, io);
+  transitionToVoting(room, io);
   return true;
 }
 

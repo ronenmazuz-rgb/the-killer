@@ -41,17 +41,9 @@ function getNarratorText(
       }
       return 'בוקר טוב! הלילה עבר בשלום. אף אחד לא נפגע.';
     case 'day_discussion':
-      return 'תושבי העיירה, הגיע הזמן לדון! מי לדעתכם הרוצח?';
-    case 'day_defense':
-      if (accusedPlayerName) {
-        return `${accusedPlayerName} הואשם/ה! זה הזמן להגן על עצמך!`;
-      }
-      return 'הנאשם/ת, הגן/י על עצמך!';
+      return 'תושבי העיירה, יש לכם 60 שניות לדון! מי לדעתכם הרוצח?';
     case 'day_voting':
-      if (accusedPlayerName) {
-        return `הגיע זמן ההצבעה! האם ${accusedPlayerName} אשם/ה או חף/ה מפשע?`;
-      }
-      return 'הגיע זמן ההצבעה!';
+      return 'הגיע זמן ההצבעה! בחרו מי לדעתכם הרוצח — השחקן עם הכי הרבה קולות יוצא!';
     case 'game_over':
       if (winner === 'citizens') {
         return 'האזרחים ניצחו! הרוצח נתפס! השלום חזר לעיירה!';
@@ -70,8 +62,7 @@ const phaseLabels: Record<string, string> = {
   night_detective: '🌙 לילה',
   night_killer: '🌙 לילה',
   day_announcement: '☀️ בוקר',
-  day_discussion: '☀️ דיון',
-  day_defense: '⚖️ הגנה',
+  day_discussion: '💬 דיון חופשי',
   day_voting: '🗳️ הצבעה',
   game_over: '🏁 סוף',
 };
@@ -90,10 +81,8 @@ export default function NarratorSeat({
   const prevPhaseRef = useRef(phase);
   const typingRef = useRef<NodeJS.Timeout | null>(null);
 
-  // typing animation + TTS
+  // typing animation + TTS — מופעל רק כשהשלב או הטקסט משתנה (לא כל render)
   useEffect(() => {
-    // רק כשהשלב משתנה
-    if (phase === prevPhaseRef.current && displayedText === fullText) return;
     prevPhaseRef.current = phase;
 
     // ביטול הקלדה קודמת
@@ -111,16 +100,16 @@ export default function NarratorSeat({
       }
     }, 40); // 40ms per character
 
-    // TTS
+    // TTS — עיכוב קטן כדי שההקלדה תתחיל לפני ההקראה
     if (fullText) {
-      // עיכוב קטן כדי שההקלדה תתחיל לפני ההקראה
-      setTimeout(() => narratorSpeak(fullText), 300);
+      setTimeout(() => narratorSpeak(fullText), 400);
     }
 
     return () => {
       if (typingRef.current) clearInterval(typingRef.current);
     };
-  }, [phase, fullText, displayedText]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, fullText]); // ❗ אל תוסיף displayedText — יגרום לgמגמגום!
 
   const avatarSize = isMobile ? 40 : 56;
 
