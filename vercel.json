@@ -1,0 +1,6 @@
+{
+  "buildCommand": "npm run build --workspace=@the-killer/web",
+  "outputDirectory": "apps/web/.next",
+  "framework": "nextjs",
+  "installCommand": "npm install"
+}

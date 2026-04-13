@@ -1,6 +1,5 @@
 {
-  "installCommand": "cd ../.. && npm install",
-  "buildCommand": "cd ../.. && npm run build --workspace=@the-killer/web",
+  "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs"
 }
