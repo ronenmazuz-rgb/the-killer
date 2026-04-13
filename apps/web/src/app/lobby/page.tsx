@@ -15,7 +15,6 @@ function LobbyContent() {
   const mode = searchParams.get('mode') || 'create';
 
   const [name, setName] = useState('');
-  const [roomCode, setRoomCode] = useState('');
   const [password, setPassword] = useState('');
   const [usePassword, setUsePassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,9 +58,6 @@ function LobbyContent() {
 
     if (mode === 'create') {
       createRoom(name.trim(), usePassword ? password : undefined);
-    } else if (mode === 'join') {
-      if (!roomCode.trim()) return;
-      joinRoom(roomCode.trim().toUpperCase(), name.trim(), password || undefined);
     }
   };
 
@@ -109,21 +105,7 @@ function LobbyContent() {
         />
 
         <div className="bg-killer-surface rounded-2xl p-8 w-full max-w-md border border-killer-text-dim/10">
-          <h2 className="text-2xl font-bold text-center mb-2">חדר המתנה</h2>
-
-          {/* קוד חדר */}
-          <div className="bg-killer-bg rounded-xl p-4 mb-6 text-center">
-            <p className="text-killer-text-dim text-sm mb-1">קוד החדר</p>
-            <p className="text-3xl font-black tracking-[0.3em] text-killer-red">
-              {currentRoom}
-            </p>
-            <button
-              onClick={() => navigator.clipboard.writeText(currentRoom)}
-              className="text-killer-text-dim text-xs mt-2 hover:text-killer-text transition-colors"
-            >
-              לחץ להעתקה
-            </button>
-          </div>
+          <h2 className="text-2xl font-bold text-center mb-6">חדר המתנה</h2>
 
           {/* רשימת שחקנים */}
           <div className="mb-6">
@@ -252,7 +234,7 @@ function LobbyContent() {
                   className="w-full bg-killer-bg rounded-xl p-4 border border-killer-text-dim/10 hover:border-killer-red/50 transition-all text-right flex items-center justify-between group"
                 >
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2">
                       {room.hasPassword && (
                         <span className="text-killer-gold text-sm" title="מוגן בסיסמה">
                           🔒
@@ -262,9 +244,6 @@ function LobbyContent() {
                         {room.hostName}
                       </span>
                     </div>
-                    <span className="text-killer-text-dim text-sm">
-                      קוד: {room.code}
-                    </span>
                   </div>
                   <div className="text-left">
                     <span className="text-killer-text-dim text-sm">
@@ -303,7 +282,7 @@ function LobbyContent() {
 
       <div className="bg-killer-surface rounded-2xl p-8 w-full max-w-md border border-killer-text-dim/10">
         <h2 className="text-2xl font-bold text-center mb-6">
-          {mode === 'create' ? 'צור חדר חדש' : mode === 'browse' ? 'מצא משחק' : 'הצטרף לחדר'}
+          {mode === 'create' ? 'צור חדר חדש' : 'מצא משחק'}
         </h2>
 
         <form onSubmit={mode === 'browse' ? handleBrowseStart : handleSubmit} className="space-y-4">
@@ -321,36 +300,6 @@ function LobbyContent() {
               autoFocus
             />
           </div>
-
-          {mode === 'join' && (
-            <>
-              <div>
-                <label className="block text-killer-text-dim text-sm mb-1">
-                  קוד החדר
-                </label>
-                <input
-                  type="text"
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder="הכנס קוד חדר..."
-                  className="input-field w-full tracking-[0.2em] text-center text-lg"
-                  maxLength={6}
-                />
-              </div>
-              <div>
-                <label className="block text-killer-text-dim text-sm mb-1">
-                  סיסמה (אם יש)
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="השאר ריק אם אין סיסמה..."
-                  className="input-field w-full"
-                />
-              </div>
-            </>
-          )}
 
           {mode === 'create' && (
             <div>
@@ -380,12 +329,11 @@ function LobbyContent() {
             disabled={
               isSubmitting ||
               !name.trim() ||
-              (mode === 'join' && !roomCode.trim()) ||
               (mode === 'create' && usePassword && !password.trim())
             }
             className="btn-primary w-full text-lg"
           >
-            {mode === 'create' ? 'צור חדר' : mode === 'browse' ? 'חפש משחקים' : 'הצטרף'}
+            {mode === 'create' ? 'צור חדר' : 'חפש משחקים'}
           </button>
         </form>
 

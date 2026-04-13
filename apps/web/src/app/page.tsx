@@ -34,12 +34,6 @@ export default function HomePage() {
         <Link href="/lobby?mode=browse" className="btn-secondary text-center text-lg">
           מצא משחק
         </Link>
-        <Link
-          href="/lobby?mode=join"
-          className="text-killer-text-dim text-sm text-center hover:text-killer-text transition-colors"
-        >
-          יש לך קוד? הצטרף ישירות
-        </Link>
       </div>
 
       {/* חוקים */}
