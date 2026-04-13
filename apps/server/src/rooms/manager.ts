@@ -6,6 +6,7 @@ import {
   type Phase,
   type ClientGameState,
   type Winner,
+  type RoomListItem,
   CardSuit,
   CardRank,
 } from '../shared/types';
@@ -14,6 +15,8 @@ import { ROOM_CODE_LENGTH, ROOM_CODE_CHARS, MIN_PLAYERS, MAX_PLAYERS } from '../
 export interface GameRoom {
   code: string;
   hostId: string;
+  hostDisplayName: string;
+  password: string | null;
   players: Map<string, PlayerWithRole>;
   phase: Phase;
   round: number;
@@ -56,7 +59,7 @@ function generateRoomCode(): string {
   return code;
 }
 
-export function createRoom(hostId: string, displayName: string): GameRoom {
+export function createRoom(hostId: string, displayName: string, password?: string): GameRoom {
   const code = generateRoomCode();
   const hostPlayer: PlayerWithRole = {
     id: hostId,
@@ -70,6 +73,8 @@ export function createRoom(hostId: string, displayName: string): GameRoom {
   const room: GameRoom = {
     code,
     hostId,
+    hostDisplayName: displayName,
+    password: password?.trim() || null,
     players: new Map([[hostId, hostPlayer]]),
     phase: 'waiting' as Phase,
     round: 0,
@@ -90,11 +95,15 @@ export function createRoom(hostId: string, displayName: string): GameRoom {
   return room;
 }
 
-export function joinRoom(code: string, playerId: string, displayName: string): GameRoom | null {
+export type JoinError = 'not_found' | 'wrong_password' | 'full' | 'in_progress';
+export type JoinResult = { room: GameRoom } | { error: JoinError };
+
+export function joinRoom(code: string, playerId: string, displayName: string, password?: string): JoinResult {
   const room = rooms.get(code);
-  if (!room) return null;
-  if (room.phase !== ('waiting' as Phase)) return null;
-  if (room.players.size >= MAX_PLAYERS) return null;
+  if (!room) return { error: 'not_found' };
+  if (room.phase !== ('waiting' as Phase)) return { error: 'in_progress' };
+  if (room.players.size >= MAX_PLAYERS) return { error: 'full' };
+  if (room.password !== null && room.password !== password) return { error: 'wrong_password' };
 
   const player: PlayerWithRole = {
     id: playerId,
@@ -107,11 +116,31 @@ export function joinRoom(code: string, playerId: string, displayName: string): G
 
   room.players.set(playerId, player);
   playerRooms.set(playerId, code);
-  return room;
+  return { room };
 }
 
 export function getRoom(code: string): GameRoom | undefined {
   return rooms.get(code);
+}
+
+export function getRoomListItem(room: GameRoom): RoomListItem | null {
+  if (room.phase !== ('waiting' as Phase) || room.players.size >= MAX_PLAYERS) return null;
+  return {
+    code: room.code,
+    hostName: room.hostDisplayName,
+    playerCount: room.players.size,
+    maxPlayers: MAX_PLAYERS,
+    hasPassword: room.password !== null,
+  };
+}
+
+export function getOpenRooms(): RoomListItem[] {
+  const result: RoomListItem[] = [];
+  for (const room of rooms.values()) {
+    const item = getRoomListItem(room);
+    if (item) result.push(item);
+  }
+  return result;
 }
 
 export function getRoomByPlayer(playerId: string): GameRoom | undefined {
@@ -120,7 +149,13 @@ export function getRoomByPlayer(playerId: string): GameRoom | undefined {
   return rooms.get(code);
 }
 
-export function removePlayer(playerId: string): GameRoom | undefined {
+export interface RemovePlayerResult {
+  room: GameRoom | null;
+  roomCode: string;
+  roomDeleted: boolean;
+}
+
+export function removePlayer(playerId: string): RemovePlayerResult | undefined {
   const code = playerRooms.get(playerId);
   if (!code) return undefined;
   const room = rooms.get(code);
@@ -133,7 +168,7 @@ export function removePlayer(playerId: string): GameRoom | undefined {
     if (room.players.size === 0) {
       if (room.phaseTimer) clearTimeout(room.phaseTimer);
       rooms.delete(code);
-      return undefined;
+      return { room: null, roomCode: code, roomDeleted: true };
     }
 
     // אם המארח עזב, העבר למישהו אחר
@@ -148,7 +183,7 @@ export function removePlayer(playerId: string): GameRoom | undefined {
     }
   }
 
-  return room;
+  return { room, roomCode: code, roomDeleted: false };
 }
 
 export function assignRoles(room: GameRoom): void {

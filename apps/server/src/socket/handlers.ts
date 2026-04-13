@@ -10,6 +10,8 @@ import {
   getPublicPlayers,
   getClientState,
   canStartGame,
+  getOpenRooms,
+  getRoomListItem,
 } from '../rooms/manager';
 import {
   startGame,
@@ -21,13 +23,13 @@ import {
 
 export function registerHandlers(io: Server, socket: Socket): void {
   // === יצירת חדר ===
-  socket.on(CLIENT_EVENTS.ROOM_CREATE, ({ displayName }: { displayName: string }) => {
+  socket.on(CLIENT_EVENTS.ROOM_CREATE, ({ displayName, password }: { displayName: string; password?: string }) => {
     if (!displayName?.trim()) {
       socket.emit(SERVER_EVENTS.ERROR, { message: 'יש להזין שם תצוגה' });
       return;
     }
 
-    const room = createRoom(socket.id, displayName.trim());
+    const room = createRoom(socket.id, displayName.trim(), password);
     socket.join(room.code);
 
     socket.emit(SERVER_EVENTS.ROOM_CREATED, {
@@ -40,21 +42,34 @@ export function registerHandlers(io: Server, socket: Socket): void {
       roomCode: room.code,
       hostId: room.hostId,
     });
+
+    // עדכן את רשימת החדרים לכל מי שגולש
+    const listItem = getRoomListItem(room);
+    if (listItem) {
+      io.to('room-browser').emit(SERVER_EVENTS.ROOMS_UPDATED, { action: 'added', room: listItem });
+    }
   });
 
   // === הצטרפות לחדר ===
-  socket.on(CLIENT_EVENTS.ROOM_JOIN, ({ roomCode, displayName }: { roomCode: string; displayName: string }) => {
+  socket.on(CLIENT_EVENTS.ROOM_JOIN, ({ roomCode, displayName, password }: { roomCode: string; displayName: string; password?: string }) => {
     if (!displayName?.trim() || !roomCode?.trim()) {
       socket.emit(SERVER_EVENTS.ERROR, { message: 'יש להזין שם וקוד חדר' });
       return;
     }
 
-    const room = joinRoom(roomCode.trim().toUpperCase(), socket.id, displayName.trim());
-    if (!room) {
-      socket.emit(SERVER_EVENTS.ROOM_ERROR, { message: 'חדר לא נמצא, מלא, או שהמשחק כבר התחיל' });
+    const result = joinRoom(roomCode.trim().toUpperCase(), socket.id, displayName.trim(), password);
+    if ('error' in result) {
+      const errorMessages: Record<string, string> = {
+        not_found: 'חדר לא נמצא',
+        wrong_password: 'סיסמה שגויה',
+        full: 'החדר מלא',
+        in_progress: 'המשחק כבר התחיל',
+      };
+      socket.emit(SERVER_EVENTS.ROOM_ERROR, { message: errorMessages[result.error] });
       return;
     }
 
+    const room = result.room;
     socket.join(room.code);
 
     socket.emit(SERVER_EVENTS.ROOM_JOINED, {
@@ -72,6 +87,25 @@ export function registerHandlers(io: Server, socket: Socket): void {
         isConnected: true,
       },
     });
+
+    // עדכן רשימת חדרים
+    const listItem = getRoomListItem(room);
+    if (listItem) {
+      io.to('room-browser').emit(SERVER_EVENTS.ROOMS_UPDATED, { action: 'updated', room: listItem });
+    } else {
+      // החדר מלא — הסר מהרשימה
+      io.to('room-browser').emit(SERVER_EVENTS.ROOMS_UPDATED, { action: 'removed', code: room.code });
+    }
+  });
+
+  // === גלישה ברשימת חדרים ===
+  socket.on(CLIENT_EVENTS.ROOMS_SUBSCRIBE, () => {
+    socket.join('room-browser');
+    socket.emit(SERVER_EVENTS.ROOMS_LIST, { rooms: getOpenRooms() });
+  });
+
+  socket.on(CLIENT_EVENTS.ROOMS_UNSUBSCRIBE, () => {
+    socket.leave('room-browser');
   });
 
   // === התחלת משחק ===
@@ -90,6 +124,9 @@ export function registerHandlers(io: Server, socket: Socket): void {
     }
 
     startGame(room, io);
+
+    // הסר מרשימת חדרים — המשחק התחיל
+    io.to('room-browser').emit(SERVER_EVENTS.ROOMS_UPDATED, { action: 'removed', code: room.code });
   });
 
   // === פעולת לילה ===
@@ -156,17 +193,30 @@ export function registerHandlers(io: Server, socket: Socket): void {
 
   // === התנתקות ===
   socket.on('disconnect', () => {
-    const room = removePlayer(socket.id);
-    if (room) {
-      io.to(room.code).emit(SERVER_EVENTS.ROOM_PLAYER_LEFT, {
-        playerId: socket.id,
-      });
+    const result = removePlayer(socket.id);
+    if (!result) return;
 
-      // עדכן סטייט לכל השחקנים
-      for (const [playerId] of room.players) {
-        const state = getClientState(room, playerId);
-        io.to(playerId).emit(SERVER_EVENTS.GAME_STATE, state);
-      }
+    if (result.roomDeleted) {
+      // החדר נמחק — הסר מרשימת חדרים
+      io.to('room-browser').emit(SERVER_EVENTS.ROOMS_UPDATED, { action: 'removed', code: result.roomCode });
+      return;
+    }
+
+    const room = result.room!;
+    io.to(room.code).emit(SERVER_EVENTS.ROOM_PLAYER_LEFT, {
+      playerId: socket.id,
+    });
+
+    // עדכן סטייט לכל השחקנים
+    for (const [playerId] of room.players) {
+      const state = getClientState(room, playerId);
+      io.to(playerId).emit(SERVER_EVENTS.GAME_STATE, state);
+    }
+
+    // עדכן רשימת חדרים
+    const listItem = getRoomListItem(room);
+    if (listItem) {
+      io.to('room-browser').emit(SERVER_EVENTS.ROOMS_UPDATED, { action: 'updated', room: listItem });
     }
   });
 }

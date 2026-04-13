@@ -1,6 +1,8 @@
 export const CLIENT_EVENTS = {
   ROOM_CREATE: 'room:create',
   ROOM_JOIN: 'room:join',
+  ROOMS_SUBSCRIBE: 'rooms:subscribe',
+  ROOMS_UNSUBSCRIBE: 'rooms:unsubscribe',
   GAME_START: 'game:start',
   CARDS_REVEALED: 'cards:revealed',
   NIGHT_ACTION: 'night:action',
@@ -16,6 +18,8 @@ export const SERVER_EVENTS = {
   ROOM_PLAYER_JOINED: 'room:player-joined',
   ROOM_PLAYER_LEFT: 'room:player-left',
   ROOM_ERROR: 'room:error',
+  ROOMS_LIST: 'rooms:list',
+  ROOMS_UPDATED: 'rooms:updated',
   GAME_STATE: 'game:state',
   GAME_NARRATOR: 'game:narrator',
   GAME_OVER: 'game:over',

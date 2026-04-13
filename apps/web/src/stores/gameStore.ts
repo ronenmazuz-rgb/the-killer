@@ -5,6 +5,7 @@ import type {
   ClientGameState,
   Player,
   ChatMessagePayload,
+  RoomListItem,
 } from '@the-killer/shared';
 
 interface GameStore {
@@ -27,6 +28,11 @@ interface GameStore {
   removeLobbyPlayer: (playerId: string) => void;
   hostId: string | null;
   setHostId: (id: string | null) => void;
+
+  // רשימת חדרים
+  availableRooms: RoomListItem[];
+  setAvailableRooms: (rooms: RoomListItem[]) => void;
+  updateAvailableRoom: (payload: { action: string; room?: RoomListItem; code?: string }) => void;
 
   // סטייט משחק
   gameState: ClientGameState | null;
@@ -67,6 +73,26 @@ export const useGameStore = create<GameStore>((set) => ({
     })),
   hostId: null,
   setHostId: (id) => set({ hostId: id }),
+
+  availableRooms: [],
+  setAvailableRooms: (rooms) => set({ availableRooms: rooms }),
+  updateAvailableRoom: (payload) =>
+    set((state) => {
+      if (payload.action === 'added' && payload.room) {
+        return { availableRooms: [...state.availableRooms, payload.room] };
+      }
+      if (payload.action === 'removed') {
+        return { availableRooms: state.availableRooms.filter((r) => r.code !== (payload.code ?? payload.room?.code)) };
+      }
+      if (payload.action === 'updated' && payload.room) {
+        return {
+          availableRooms: state.availableRooms.map((r) =>
+            r.code === payload.room!.code ? payload.room! : r
+          ),
+        };
+      }
+      return {};
+    }),
 
   gameState: null,
   setGameState: (gameState) => set({ gameState }),

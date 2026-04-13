@@ -36,6 +36,8 @@ export function useSocket() {
       console.error('שגיאת חדר:', message);
       alert(message);
     };
+    const onRoomsList = ({ rooms }: { rooms: any[] }) => store.setAvailableRooms(rooms);
+    const onRoomsUpdated = (payload: any) => store.updateAvailableRoom(payload);
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -48,6 +50,8 @@ export function useSocket() {
     socket.on(SERVER_EVENTS.CHAT_MESSAGE, onChat);
     socket.on(SERVER_EVENTS.ERROR, onError);
     socket.on(SERVER_EVENTS.ROOM_ERROR, onRoomError);
+    socket.on(SERVER_EVENTS.ROOMS_LIST, onRoomsList);
+    socket.on(SERVER_EVENTS.ROOMS_UPDATED, onRoomsUpdated);
 
     // אם כבר מחובר (reconnect), עדכן את ה-id
     if (socket.connected) {
@@ -68,15 +72,25 @@ export function useSocket() {
       socket.off(SERVER_EVENTS.CHAT_MESSAGE, onChat);
       socket.off(SERVER_EVENTS.ERROR, onError);
       socket.off(SERVER_EVENTS.ROOM_ERROR, onRoomError);
+      socket.off(SERVER_EVENTS.ROOMS_LIST, onRoomsList);
+      socket.off(SERVER_EVENTS.ROOMS_UPDATED, onRoomsUpdated);
     };
   }, []);
 
-  const createRoom = useCallback((displayName: string) => {
-    getSocket().emit(CLIENT_EVENTS.ROOM_CREATE, { displayName });
+  const createRoom = useCallback((displayName: string, password?: string) => {
+    getSocket().emit(CLIENT_EVENTS.ROOM_CREATE, { displayName, password });
   }, []);
 
-  const joinRoom = useCallback((roomCode: string, displayName: string) => {
-    getSocket().emit(CLIENT_EVENTS.ROOM_JOIN, { roomCode, displayName });
+  const joinRoom = useCallback((roomCode: string, displayName: string, password?: string) => {
+    getSocket().emit(CLIENT_EVENTS.ROOM_JOIN, { roomCode, displayName, password });
+  }, []);
+
+  const subscribeToRooms = useCallback(() => {
+    getSocket().emit(CLIENT_EVENTS.ROOMS_SUBSCRIBE);
+  }, []);
+
+  const unsubscribeFromRooms = useCallback(() => {
+    getSocket().emit(CLIENT_EVENTS.ROOMS_UNSUBSCRIBE);
   }, []);
 
   const startGame = useCallback(() => {
@@ -107,5 +121,7 @@ export function useSocket() {
     vote,
     endDiscussion,
     sendChat,
+    subscribeToRooms,
+    unsubscribeFromRooms,
   };
 }

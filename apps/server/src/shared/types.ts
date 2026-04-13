@@ -80,4 +80,12 @@ export interface RoomInfo {
   isGameActive: boolean;
 }
 
+export interface RoomListItem {
+  code: string;
+  hostName: string;
+  playerCount: number;
+  maxPlayers: number;
+  hasPassword: boolean;
+}
+
 export type Winner = 'citizens' | 'killer';

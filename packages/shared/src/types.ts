@@ -86,5 +86,14 @@ export interface RoomInfo {
   isGameActive: boolean;
 }
 
+// === פריט ברשימת חדרים ===
+export interface RoomListItem {
+  code: string;
+  hostName: string;
+  playerCount: number;
+  maxPlayers: number;
+  hasPassword: boolean;
+}
+
 // === תוצאת ניצחון ===
 export type Winner = 'citizens' | 'killer';
