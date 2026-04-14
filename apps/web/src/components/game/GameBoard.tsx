@@ -47,11 +47,9 @@ export default function GameBoard() {
     switch (phase) {
       case Phase.NIGHT_DETECTIVE:
       case Phase.NIGHT_KILLER:
-        SoundManager.setAmbience('nightAmbience');
         SoundManager.play('heartbeat', 0.3);
         break;
       case Phase.DAY_ANNOUNCEMENT:
-        SoundManager.setAmbience('dayAmbience');
         if (gameState.killedPlayerId) {
           // עיכוב לאנימציית הרצח
           setTimeout(() => SoundManager.play('knifeStab'), 800);
@@ -59,7 +57,6 @@ export default function GameBoard() {
         }
         break;
       case Phase.DAY_DISCUSSION:
-        SoundManager.setAmbience('dayAmbience');
         break;
       case Phase.DAY_VOTING:
         SoundManager.setAmbience('tension');
