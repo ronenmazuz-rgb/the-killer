@@ -198,8 +198,7 @@ export default function GameBoard() {
 
           {/* מושבי שחקנים */}
           {players.map((player, index) => {
-            const relIndex = (index - (myIndex >= 0 ? myIndex : 0) + players.length) % players.length;
-            const pos = seatPositions[relIndex];
+            const pos = seatPositions[index];
             if (!pos) return null;
 
             return (
