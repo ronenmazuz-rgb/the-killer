@@ -79,6 +79,16 @@ export default function GameBoard() {
     }
   }, [gameState?.phase]);
 
+  // === איפוס בחירת מטרה בתחילת כל לילה ===
+  useEffect(() => {
+    if (
+      gameState?.phase === Phase.NIGHT_DETECTIVE ||
+      gameState?.phase === Phase.NIGHT_KILLER
+    ) {
+      setSelectedTarget(null);
+    }
+  }, [gameState?.phase, gameState?.round]);
+
   // === אנימציית רצח ===
   useEffect(() => {
     if (!gameState) return;
