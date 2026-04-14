@@ -34,13 +34,7 @@ export function useWebRTC(roomCode: string | null) {
   const initialized = useRef(false);
   const iceConfigRef = useRef<RTCConfiguration>(FALLBACK_ICE);
 
-  // טעינת ICE servers (כולל TURN) בעת כניסה לחדר
-  useEffect(() => {
-    if (!roomCode) return;
-    fetchIceServers().then((config) => {
-      iceConfigRef.current = config;
-    });
-  }, [roomCode]);
+  // ICE servers נטענים בתוך ה-effect של האיתות (ראה למטה)
 
   const createPeerConnection = useCallback((peerId: string): RTCPeerConnection => {
     const existing = peerConnections.current.get(peerId);
@@ -141,8 +135,11 @@ export function useWebRTC(roomCode: string | null) {
     initialized.current = true;
     const socket = getSocket();
 
-    // Tell others we're ready for WebRTC
-    socket.emit('webrtc:join', { roomCode });
+    // טען ICE servers (כולל TURN) לפני שמודיעים שמוכנים לחיבור
+    fetchIceServers().then((config) => {
+      iceConfigRef.current = config;
+      socket.emit('webrtc:join', { roomCode });
+    });
 
     const handlePeerJoined = ({ peerId }: { peerId: string }) => {
       initiateOffer(peerId);
