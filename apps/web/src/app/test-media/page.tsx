@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { narratorSpeak, narratorStop, SoundManager } from '@/lib/sounds';
+import { calculateSeatPositions } from '@/lib/seatPositions';
 
 // ביטויים לבדיקת TTS
 const TTS_SAMPLES = [
@@ -30,6 +31,84 @@ const AMBIENCE_LIST = [
   { key: 'dayAmbience', label: '☀️ יום' },
   { key: 'tension', label: '😰 מתח' },
 ] as const;
+
+const PLAYER_NAMES = ['אני', 'דוד', 'שרה', 'יוסי', 'מרים', 'אלי', 'נועה', 'רון', 'תמר', 'גיל', 'ליאת', 'עמיר'];
+
+function SeatSimulator() {
+  const [playerCount, setPlayerCount] = useState(4);
+  const positions = calculateSeatPositions(playerCount, 0, false);
+
+  // אחוזי השולחן האובלי (כמו ב-PokerTable)
+  const TABLE_W = 72; // vw — משתמש ב-% עבור הדמיה
+  const TABLE_H = 42; // vh
+
+  return (
+    <section className="bg-killer-surface rounded-2xl p-6 border border-killer-text-dim/10 mb-6">
+      <h2 className="text-lg font-bold mb-1">🪑 סימולציית מושבים</h2>
+      <p className="text-killer-text-dim text-xs mb-4">בדיקה שהשחקנים יושבים נכון סביב השולחן לפי מספר שחקנים</p>
+
+      {/* בורר מספר שחקנים */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-killer-text-dim text-sm">מספר שחקנים:</span>
+        {[4,5,6,7,8,9,10,11,12].map(n => (
+          <button
+            key={n}
+            onClick={() => setPlayerCount(n)}
+            className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors ${
+              playerCount === n
+                ? 'bg-killer-red text-white'
+                : 'bg-killer-bg text-killer-text-dim hover:text-killer-text'
+            }`}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+
+      {/* שולחן + מושבים */}
+      <div className="relative w-full" style={{ paddingBottom: '42%' }}>
+        {/* אובל השולחן */}
+        <div
+          className="absolute inset-0 rounded-[50%] border-4 border-amber-800"
+          style={{ background: 'radial-gradient(ellipse, #1a472a 60%, #0f2d1a 100%)' }}
+        />
+        {/* מנחה — תמיד בראש */}
+        <div
+          className="absolute flex flex-col items-center"
+          style={{ left: '50%', top: '2%', transform: 'translate(-50%, 0)' }}
+        >
+          <div className="w-8 h-8 rounded-full bg-killer-gold/30 border-2 border-killer-gold flex items-center justify-center text-xs">🎩</div>
+          <span className="text-[9px] text-killer-gold mt-0.5">מנחה</span>
+        </div>
+
+        {/* מושבי שחקנים */}
+        {positions.map((pos, i) => (
+          <div
+            key={i}
+            className="absolute flex flex-col items-center"
+            style={{
+              left: `${pos.x}%`,
+              top: `${pos.y}%`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold
+              ${i === 0 ? 'bg-killer-red/30 border-killer-red text-killer-red' : 'bg-white/10 border-white/40 text-white'}`}>
+              {i === 0 ? '✦' : i}
+            </div>
+            <span className={`text-[9px] mt-0.5 ${i === 0 ? 'text-killer-red' : 'text-killer-text-dim'}`}>
+              {PLAYER_NAMES[i] ?? `שחקן ${i}`}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-killer-text-dim text-xs mt-3">
+        ✦ = אתה (תמיד בתחתית) · מספרים = שחקנים אחרים · 🎩 = מנחה
+      </p>
+    </section>
+  );
+}
 
 export default function TestMediaPage() {
   // מצלמה ומיק
@@ -330,6 +409,9 @@ export default function TestMediaPage() {
           )}
         </div>
       </section>
+
+      {/* ===== סימולציית מושבים ===== */}
+      <SeatSimulator />
 
       {/* לינק חזרה */}
       <a href="/" className="text-killer-text-dim text-sm hover:text-killer-text transition-colors">
