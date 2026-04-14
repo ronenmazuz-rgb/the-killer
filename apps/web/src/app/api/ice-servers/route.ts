@@ -45,25 +45,19 @@ export async function GET() {
 
   if (apiKey && appName) {
     try {
-      // POST יוצר credentials זמניים — לא תלוי ב-credentials שנוצרו בדשבורד
       const url = `https://${appName}.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: `session-${Date.now()}`, expiresInSeconds: 86400 }),
-        cache: 'no-store',
-      });
+      const res = await fetch(url, { cache: 'no-store' });
 
       if (res.ok) {
         const iceServers = await res.json();
         if (Array.isArray(iceServers) && iceServers.length > 0) {
-          console.log('[ICE API] Got', iceServers.length, 'ICE servers from Metered (POST)');
+          console.log('[ICE API] Got', iceServers.length, 'ICE servers from Metered');
           return NextResponse.json(iceServers);
         }
-        console.warn('[ICE API] Metered POST returned empty array');
+        console.warn('[ICE API] Metered returned empty array');
       } else {
         const body = await res.text().catch(() => '');
-        console.warn('[ICE API] Metered POST returned', res.status, body.slice(0, 120));
+        console.warn('[ICE API] Metered returned', res.status, body.slice(0, 120));
       }
     } catch (err) {
       console.warn('[ICE API] Metered fetch failed:', err);
