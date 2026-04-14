@@ -10,14 +10,14 @@ const SOUND_PATHS = {
   tension: '/sounds/ambience/tension.mp3',
 
   // אפקטים
-  cardDeal: '/sounds/sfx/card-deal.mp3',
-  cardFlip: '/sounds/sfx/card-flip.mp3',
-  knifeStab: '/sounds/sfx/knife-stab.mp3',
-  heartbeat: '/sounds/sfx/heartbeat.mp3',
-  gavel: '/sounds/sfx/gavel.mp3',
-  crowdGasp: '/sounds/sfx/crowd-gasp.mp3',
+  cardDeal: '/sounds/sfx/card-deal.wav',
+  cardFlip: '/sounds/sfx/card-flip.wav',
+  knifeStab: '/sounds/sfx/knife-stab.wav',
+  heartbeat: '/sounds/sfx/heartbeat.m4a',
+  gavel: '/sounds/sfx/gavel.wav',
+  crowdGasp: '/sounds/sfx/crowd-gasp.wav',
   victory: '/sounds/sfx/victory.mp3',
-  defeat: '/sounds/sfx/defeat.mp3',
+  defeat: '/sounds/sfx/defeat.wav',
 } as const;
 
 type SoundName = keyof typeof SOUND_PATHS;
@@ -150,73 +150,35 @@ export const SoundManager = {
 
 // === TTS — מנחה מקריין ===
 
-let ttsVoice: SpeechSynthesisVoice | null = null;
+let currentTtsAudio: HTMLAudioElement | null = null;
 
 /**
- * אתחול קול עברי ל-TTS
- */
-function initHebrewVoice() {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-
-  const voices = window.speechSynthesis.getVoices();
-  // מחפש קול עברי
-  ttsVoice =
-    voices.find((v) => v.lang.startsWith('he')) ??
-    voices.find((v) => v.lang.startsWith('iw')) ?? // fallback
-    null;
-}
-
-// אתחול כשהקולות נטענים
-if (typeof window !== 'undefined' && window.speechSynthesis) {
-  window.speechSynthesis.onvoiceschanged = initHebrewVoice;
-  initHebrewVoice();
-}
-
-/**
- * הקראת טקסט בעברית (TTS)
- * rate=1.0 (מהירות רגילה), pitch=1.0 (גובה רגיל) — למניעת גמגום
+ * הקראת טקסט בעברית דרך Google Translate TTS API
  */
 export function narratorSpeak(text: string, rate = 1.0) {
-  if (typeof window === 'undefined' || !window.speechSynthesis || isMuted) return;
+  if (typeof window === 'undefined' || isMuted) return;
 
-  // ניסיון נוסף לאתחל קול אם עדיין לא קיים
-  if (!ttsVoice) {
-    initHebrewVoice();
-  }
+  // עצור הקראה קודמת
+  narratorStop();
 
-  // ביטול הקראה קודמת — workaround לבאג Chrome שלפעמים תוקע
-  window.speechSynthesis.cancel();
+  const url = `/api/tts?text=${encodeURIComponent(text)}`;
+  const audio = new Audio(url);
+  audio.playbackRate = Math.max(0.5, Math.min(2, rate));
+  audio.volume = Math.min(1, masterVolume * 1.2);
 
-  // עיכוב קטן אחרי cancel (Chrome bug workaround)
-  setTimeout(() => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'he-IL';
-    utterance.rate = rate;
-    utterance.pitch = 1.0; // גובה רגיל — pitch נמוך גורם לגמגום בחלק מהדפדפנים
-    utterance.volume = Math.min(1, masterVolume * 1.2); // קצת יותר חזק
-
-    if (ttsVoice) {
-      utterance.voice = ttsVoice;
-    }
-
-    // Chrome bug: לפעמים הדיבור נתקע אחרי כמה שניות — resume כל שנייה
-    const resumeTimer = setInterval(() => {
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
-    }, 1000);
-
-    utterance.onend = () => clearInterval(resumeTimer);
-    utterance.onerror = () => clearInterval(resumeTimer);
-
-    window.speechSynthesis.speak(utterance);
-  }, 50);
+  currentTtsAudio = audio;
+  audio.play().catch(() => {
+    // שגיאה שקטה — לא תוצג למשתמש
+  });
 }
 
 /**
  * ביטול הקראה
  */
 export function narratorStop() {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
+  if (currentTtsAudio) {
+    currentTtsAudio.pause();
+    currentTtsAudio.src = '';
+    currentTtsAudio = null;
+  }
 }
