@@ -3,12 +3,22 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { getSocket } from '@/lib/socket';
 
-// ICE servers: STUN + TURN ציבורי (Open Relay) כברירת מחדל
+// ICE servers: STUN + TURN ציבורי כברירת מחדל (freestun + Open Relay)
 // ה-API מנסה לטעון credentials פרטיים מהשרת, אך אלו משמשים גם כ-fallback
 const FALLBACK_ICE = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    {
+      urls: 'turn:freestun.net:3478',
+      username: 'freestun',
+      credential: 'freestun',
+    },
+    {
+      urls: 'turns:freestun.net:5349',
+      username: 'freestun',
+      credential: 'freestun',
+    },
     {
       urls: 'turn:openrelay.metered.ca:80',
       username: 'openrelayproject',
@@ -21,11 +31,6 @@ const FALLBACK_ICE = {
     },
     {
       urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:80?transport=tcp',
       username: 'openrelayproject',
       credential: 'openrelayproject',
     },
@@ -108,6 +113,31 @@ export function useWebRTC(roomCode: string | null) {
 
     pc.oniceconnectionstatechange = () => {
       console.log('[WebRTC] ICE connection state with', peerId, '→', pc.iceConnectionState);
+      // אם ICE נכשל ואנחנו ה-offerer — נסה restart ICE פעם אחת
+      type ExtPC = RTCPeerConnection & { _isOfferer?: boolean; _iceRestartAttempted?: boolean };
+      const extPc = pc as ExtPC;
+      if (pc.iceConnectionState === 'failed' && extPc._isOfferer && !extPc._iceRestartAttempted) {
+        extPc._iceRestartAttempted = true;
+        console.log('[WebRTC] ICE failed → restarting ICE with', peerId);
+        pc.restartIce();
+      }
+    };
+
+    // כשיש צורך ב-renegotiation לאחר ICE restart — שלח offer חדש אם אנחנו ה-offerer
+    // (לא מטפלים ב-negotiationneeded הראשוני — ה-offer הראשון נשלח ב-initiateOffer)
+    pc.onnegotiationneeded = async () => {
+      type ExtPC = RTCPeerConnection & { _isOfferer?: boolean; _iceRestartAttempted?: boolean };
+      const extPc = pc as ExtPC;
+      if (!extPc._isOfferer || !extPc._iceRestartAttempted) return;
+      if (pc.signalingState !== 'stable') return;
+      try {
+        console.log('[WebRTC] onnegotiationneeded (ICE restart) for', peerId);
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+        socket.emit('webrtc:offer', { to: peerId, offer });
+      } catch (err) {
+        console.error('[WebRTC] ICE restart offer failed for', peerId, err);
+      }
     };
 
     peerConnections.current.set(peerId, pc);
@@ -118,6 +148,8 @@ export function useWebRTC(roomCode: string | null) {
     const socket = getSocket();
     try {
       const pc = createPeerConnection(peerId);
+      // סמן שאנחנו ה-offerer — נדרש ל-ICE restart
+      (pc as RTCPeerConnection & { _isOfferer?: boolean; _iceRestartAttempted?: boolean })._isOfferer = true;
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       socket.emit('webrtc:offer', { to: peerId, offer });

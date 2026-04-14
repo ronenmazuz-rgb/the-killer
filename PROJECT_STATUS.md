@@ -1,6 +1,6 @@
 # משחק הרוצח — סיכום פרויקט
 
-> עודכן לאחרונה: 14 אפריל 2026
+> עודכן לאחרונה: 14 אפריל 2026 (WebRTC TURN fix)
 
 ---
 
@@ -75,39 +75,24 @@
 
 ---
 
-## ⚠️ בעיה פתוחה: WebRTC בין-עירוני לא עובד
+## ✅ WebRTC בין-עירוני — תיקון מיושם (14 אפריל 2026)
 
-### תסמינים
-- שחקנים באותה רשת רואים אחד את השני ✅
-- שחקנים ברשתות שונות (ערים שונות) לא ✅
-- ICE connection מגיע ל-`checking` ואז `failed`
+### מה שונה
+| קובץ | שינוי |
+|---|---|
+| `ice-servers/route.ts` | שינוי מ-GET ל-**POST** ל-Metered.ca (יוצר credentials זמניים); fallback: freestun + Open Relay |
+| `useWebRTC.ts` | הוסף `freestun.net` ל-FALLBACK_ICE; הוסף **ICE restart** אוטומטי כש-ICE נכשל |
 
-### מה מומש
-- `/api/ice-servers` — מחזיר STUN + TURN (Open Relay)
-- `FALLBACK_ICE` בקליינט — כולל openrelay.metered.ca
-- Debug endpoint: `/api/debug-ice`
+### שכבות הגנה
+1. **Metered.ca POST** — יוצר credentials זמניים (86400s) ללא צורך בדשבורד
+2. **freestun.net:3478 + 5349** — TURN חינמי ואמין כ-fallback
+3. **Open Relay** — גיבוי אחרון
+4. **ICE Restart** — אם החיבור נכשל, ה-offerer שולח offer חדש עם `iceRestart: true`
 
-### שורש הבעיה
-**Metered.ca GET credentials API מחזיר 401**, למרות שה-SECRET KEY נכון:
-- `GET https://the-killer.metered.live/api/v1/turn/credentials?apiKey=8zKfDl...` → `{"error":"Invalid API Key"}`
-- הבדיקה אישרה: ה-SECRET KEY בדשבורד (`8zKfDl...`) זהה למה שב-Vercel
-- תוכנית TURN: **TURN TRIAL GLOBAL 500MB**, תוקף עד MAY-14-2026, שימוש: 0GB
-- **אין credentials שנוצרו** בדף "TURN Credentials" (ריק, מבקש "Generate First Credential")
-
-### השערה
-ייתכן שה-GET endpoint של Metered.ca לא מחזיר credentials דינמיים, אלא רק מציג credentials **סטטיים** שנוצרו ידנית. כיוון שאין credentials סטטיים, ה-API מחזיר 401.
-
-### מה נשאר לנסות
-**אפשרות א' (ראשון לנסות):** ב-Metered.ca dashboard → TURN Server → לחץ "Add Credential" ליצור credential סטטי. לאחר מכן בדוק שוב `/api/ice-servers` — אולי ימלא את הרשימה.
-
-**אפשרות ב':** שנה את `/api/ice-servers` לבצע POST request ליצירת credentials זמניים:
-```
-POST https://the-killer.metered.live/api/v1/turn/credentials?apiKey=KEY
-Body: { "label": "game-session" }
-```
-Response מחזיר `{ username, password }` שניתן להשתמש בהם כ-TURN credentials.
-
-**אפשרות ג' (קיים כרגע - לא אמין):** Open Relay ציבורי (`openrelay.metered.ca`) — ICE מגיע ל-checking ונופל.
+### לאמת
+- `/api/debug-ice` — בדוק שה-POST מצליח
+- Console: `[WebRTC] ICE servers loaded:` — אמור לכלול TURN servers
+- Console: `[WebRTC] ICE connection state → connected` בין שחקנים ברשתות שונות
 
 ---
 
