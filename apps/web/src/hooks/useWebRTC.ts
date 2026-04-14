@@ -3,28 +3,24 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { getSocket } from '@/lib/socket';
 
-const ICE_SERVERS = {
+// ICE servers נטענים דינמית מהשרת (כולל TURN credentials מ-Metered.ca)
+const FALLBACK_ICE = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    // TURN servers — נדרשים כשמשחקים מרשתות שונות (ערים שונות)
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turns:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
   ],
 };
+
+async function fetchIceServers(): Promise<RTCConfiguration> {
+  try {
+    const res = await fetch('/api/ice-servers');
+    if (!res.ok) throw new Error('failed');
+    const iceServers = await res.json();
+    return { iceServers };
+  } catch {
+    return FALLBACK_ICE;
+  }
+}
 
 export function useWebRTC(roomCode: string | null) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -36,6 +32,15 @@ export function useWebRTC(roomCode: string | null) {
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
   const initialized = useRef(false);
+  const iceConfigRef = useRef<RTCConfiguration>(FALLBACK_ICE);
+
+  // טעינת ICE servers (כולל TURN) בעת כניסה לחדר
+  useEffect(() => {
+    if (!roomCode) return;
+    fetchIceServers().then((config) => {
+      iceConfigRef.current = config;
+    });
+  }, [roomCode]);
 
   const createPeerConnection = useCallback((peerId: string): RTCPeerConnection => {
     const existing = peerConnections.current.get(peerId);
@@ -44,7 +49,7 @@ export function useWebRTC(roomCode: string | null) {
     }
 
     const socket = getSocket();
-    const pc = new RTCPeerConnection(ICE_SERVERS);
+    const pc = new RTCPeerConnection(iceConfigRef.current);
 
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
