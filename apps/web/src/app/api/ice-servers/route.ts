@@ -17,19 +17,23 @@ export async function GET() {
   }
 
   try {
-    const res = await fetch(
-      `https://${appName}.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`,
-      { next: { revalidate: 3600 } } // cache לשעה
-    );
+    const url = `https://${appName}.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`;
+    console.log('[ICE API] Fetching from Metered:', url.replace(apiKey, '***'));
+    const res = await fetch(url, { next: { revalidate: 3600 } });
 
-    if (!res.ok) throw new Error('Metered API failed');
+    if (!res.ok) {
+      const body = await res.text();
+      console.error('[ICE API] Metered error:', res.status, body);
+      throw new Error(`Metered API ${res.status}`);
+    }
 
     const iceServers = await res.json();
+    console.log('[ICE API] Got', iceServers.length, 'ICE servers from Metered');
     return NextResponse.json(iceServers, {
       headers: { 'Cache-Control': 'public, max-age=3600' },
     });
-  } catch {
-    // fallback — STUN בלבד
+  } catch (err) {
+    console.error('[ICE API] Falling back to STUN only:', err);
     return NextResponse.json([
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
