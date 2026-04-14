@@ -43,6 +43,7 @@ export function useWebRTC(roomCode: string | null) {
     }
 
     const socket = getSocket();
+    console.log('[WebRTC] Creating peer connection to', peerId, iceConfigRef.current);
     const pc = new RTCPeerConnection(iceConfigRef.current);
 
     if (localStreamRef.current) {
@@ -69,6 +70,7 @@ export function useWebRTC(roomCode: string | null) {
     };
 
     pc.onconnectionstatechange = () => {
+      console.log('[WebRTC] Connection state with', peerId, '→', pc.connectionState);
       if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
         peerConnections.current.delete(peerId);
         setRemoteStreams((prev) => {
@@ -77,6 +79,14 @@ export function useWebRTC(roomCode: string | null) {
           return next;
         });
       }
+    };
+
+    pc.onicegatheringstatechange = () => {
+      console.log('[WebRTC] ICE gathering state with', peerId, '→', pc.iceGatheringState);
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log('[WebRTC] ICE connection state with', peerId, '→', pc.iceConnectionState);
     };
 
     peerConnections.current.set(peerId, pc);
@@ -138,10 +148,17 @@ export function useWebRTC(roomCode: string | null) {
     // טען ICE servers (כולל TURN) לפני שמודיעים שמוכנים לחיבור
     fetchIceServers().then((config) => {
       iceConfigRef.current = config;
+      const serverTypes = (config.iceServers ?? []).map((s: RTCIceServer) => {
+        const urls = Array.isArray(s.urls) ? s.urls : [s.urls];
+        return urls.map((u) => (u.startsWith('turn:') ? 'TURN' : 'STUN')).join(',');
+      });
+      console.log('[WebRTC] ICE servers loaded:', serverTypes.join(' | '), config.iceServers);
       socket.emit('webrtc:join', { roomCode });
+      console.log('[WebRTC] Emitted webrtc:join for room', roomCode);
     });
 
     const handlePeerJoined = ({ peerId }: { peerId: string }) => {
+      console.log('[WebRTC] Peer joined:', peerId);
       initiateOffer(peerId);
     };
 
