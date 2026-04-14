@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+// מנע cache של Next.js על route handler זה — credentials חייבים להיות fresh
+export const dynamic = 'force-dynamic';
+
 // שרתי TURN ציבוריים חינמיים (Open Relay Project מבית Metered.ca)
 const OPEN_RELAY_TURN = [
   { urls: 'stun:stun.l.google.com:19302' },
