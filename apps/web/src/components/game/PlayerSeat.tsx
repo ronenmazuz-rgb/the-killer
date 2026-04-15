@@ -13,7 +13,7 @@ interface PlayerSeatProps {
   isSelf: boolean;
   myRole?: Role;
   myCard?: Card;
-  position: { x: number; y: number };
+  position: { x: number; y: number; angle?: number };
   isTargetable: boolean;
   isTargetableBlue?: boolean;
   isSelected: boolean;
@@ -82,27 +82,54 @@ export default function PlayerSeat({
         ? 'seat-accused'
         : '';
 
+  // חישוב מיקום הקלף על השולחן — מוזז פנימה לפי זווית המושב
+  const angle = position.angle ?? (-Math.PI / 2); // ברירת מחדל: תחתית
+  const cardHalfH = isSelf ? 40 : 28; // lg: 80px גובה; sm: 56px גובה
+  const cardOffset = Math.round(circleSize / 2 + cardHalfH + 4); // 4px gap
+  const cardOffsetX = Math.round(-Math.cos(angle) * cardOffset);
+  const cardOffsetY = Math.round(Math.sin(angle) * cardOffset);
+
   return (
     <motion.div
-      className="absolute flex flex-col items-center"
+      className="absolute"
       style={{
         left: `${position.x}%`,
         top: `${position.y}%`,
         transform: 'translate(-50%, -50%)',
+        width: circleSize,
+        height: circleSize,
         zIndex: isSelf ? 25 : isBeingKilled ? 35 : 20,
       }}
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.45, delay: 0.1 }}
     >
+      {/* קלף על השולחן — מוצג לפני העיגול כדי שיהיה מתחתיו */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          left: '50%',
+          top: '50%',
+          transform: `translate(calc(-50% + ${cardOffsetX}px), calc(-50% + ${cardOffsetY}px))`,
+          zIndex: 0,
+        }}
+      >
+        <MiniCard
+          card={isSelf ? myCard : undefined}
+          role={isSelf ? myRole : undefined}
+          isFaceUp={isSelf}
+          size={isSelf ? 'lg' : 'sm'}
+          isKilled={isDead}
+        />
+      </div>
+
       {/* עיגול הוידאו — האלמנט הראשי */}
       <div
-        className={`relative rounded-full overflow-hidden border-3 border-[3px] transition-all duration-300
+        className={`absolute inset-0 rounded-full overflow-hidden border-3 border-[3px] transition-all duration-300
           ${ringColor} ${pulseClass}
           ${isTargetable ? 'cursor-pointer' : ''}
           ${isDead ? 'opacity-40 grayscale' : ''}
           bg-killer-surface shadow-xl`}
-        style={{ width: circleSize, height: circleSize }}
         onClick={handleClick}
         role={isTargetable ? 'button' : undefined}
         tabIndex={isTargetable ? 0 : undefined}
@@ -151,23 +178,12 @@ export default function PlayerSeat({
 
       {/* נקודת סטטוס */}
       <div
-        className={`absolute -top-0.5 right-2 w-3.5 h-3.5 rounded-full border-2 border-killer-bg ${
+        className={`absolute -top-0.5 right-2 w-3.5 h-3.5 rounded-full border-2 border-killer-bg z-10 ${
           !player.isConnected ? 'bg-yellow-400' : isDead ? 'bg-red-600' : 'bg-green-400'
         }`}
       />
 
-      {/* קלף — מתחת לעיגול */}
-      <div className="mt-1.5">
-        <MiniCard
-          card={isSelf ? myCard : undefined}
-          role={isSelf ? myRole : undefined}
-          isFaceUp={isSelf}
-          size={isSelf ? 'lg' : 'sm'}
-          isKilled={isDead}
-        />
-      </div>
-
-      {/* אינדיקטור הצבעה — מראה שהשחקן הצביע */}
+      {/* אינדיקטור הצבעה */}
       <AnimatePresence>
         {hasVoted && (
           <motion.span
@@ -175,7 +191,7 @@ export default function PlayerSeat({
             initial={{ scale: 0, y: -10 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0 }}
-            className="absolute -top-3 -left-1 text-xl drop-shadow-lg"
+            className="absolute -top-3 -left-1 text-xl drop-shadow-lg z-10"
           >
             🗳️
           </motion.span>

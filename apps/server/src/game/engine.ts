@@ -19,8 +19,9 @@ export function startGame(room: GameRoom, io: Server): void {
 
   broadcastState(room, io);
 
+  // אחרי חלוקת קלפים — עוברים ללילה ראשון (לא לדיון!)
   room.phaseTimer = setTimeout(() => {
-    transitionToDay(room, io);
+    transitionToNight(room, io);
   }, TIMERS.CARD_REVEAL);
 }
 
