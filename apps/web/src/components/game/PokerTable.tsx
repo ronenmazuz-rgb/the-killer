@@ -54,14 +54,20 @@ export default function PokerTable({ children, isNight, isMobile }: PokerTablePr
         </div>
       </div>
 
-      {/* ילדים — מושבים, מנחה, מרכז (מחוץ לטרנספורם של הלילה) */}
+      {/* ילדים — מושבים מסביב לשולחן
+           המיכל גדול מהאליפסה ב-~80px לכל צד,
+           כך שהאחוזים של seatPositions (a=42,b=34) מציבים שחקנים
+           על קצה האליפסה ולא בתוכה */}
       <div
         className="absolute"
         style={{
-          width: isMobile ? '88vw' : '72vw',
-          height: isMobile ? '45vh' : '42vh',
-          maxWidth: '900px',
-          maxHeight: '460px',
+          width: isMobile ? 'calc(88vw + 120px)' : 'calc(72vw + 160px)',
+          height: isMobile ? 'calc(45vh + 120px)' : 'calc(42vh + 160px)',
+          maxWidth: isMobile ? '1020px' : '1060px',
+          maxHeight: isMobile ? '580px' : '620px',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
         }}
       >
         {children}
