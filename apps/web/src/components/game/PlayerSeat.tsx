@@ -54,7 +54,7 @@ export default function PlayerSeat({
   const avatar = getPlayerAvatar(player.id);
 
   // עיגול וידאו גדול — לב הממשק
-  const circleSize = isMobile ? 88 : 128;
+  const circleSize = isMobile ? 72 : 128;
 
   const handleClick = () => {
     if (isTargetable && onSelect) onSelect(player.id);

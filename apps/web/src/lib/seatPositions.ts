@@ -24,8 +24,8 @@ export function calculateSeatPositions(
 ): SeatPosition[] {
   // רדיוסי האליפסה (באחוזים מהמיכל)
   // המיכל גדול מהשולחן ב-80px לכל צד — ערכים אלו מציבים שחקנים על קצה האובל
-  const a = isMobile ? 40 : 42; // חצי-ציר אופקי (משחקנים ממש על קצה השולחן)
-  const b = isMobile ? 36 : 37; // חצי-ציר אנכי (was 32/34, increased for new container)
+  const a = isMobile ? 36 : 42; // חצי-ציר אופקי — מובייל קטן יותר למניעת חיתוך
+  const b = isMobile ? 35 : 37; // חצי-ציר אנכי
 
   const centerX = 50;
   const centerY = 50;

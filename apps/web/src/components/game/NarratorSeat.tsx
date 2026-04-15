@@ -114,48 +114,48 @@ export default function NarratorSeat({
   const avatarSize = isMobile ? 34 : 40;
 
   return (
-    <div className="w-full flex items-center gap-2 px-3 py-2
-      bg-killer-surface/80 backdrop-blur-sm
-      border-b border-killer-gold/15 shadow-md"
-      style={{ minHeight: isMobile ? 52 : 60 }}
+    <div
+      className="w-full bg-killer-surface/80 backdrop-blur-sm
+        border-b border-killer-gold/15 shadow-md"
     >
-      {/* Badge שלב */}
-      <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-full
-        bg-killer-gold/20 text-killer-gold font-bold border border-killer-gold/30 whitespace-nowrap">
-        {phaseLabels[phase] || phase}
-        {round > 0 && ` · ${round}`}
-      </span>
-
-      {/* אווטאר מנחה */}
-      <div
-        className="flex-shrink-0 rounded-full flex items-center justify-center
-          bg-gradient-to-br from-killer-gold/30 to-killer-surface
-          border-2 border-killer-gold/50 shadow-md"
-        style={{ width: avatarSize, height: avatarSize }}
-      >
-        <span style={{ fontSize: avatarSize * 0.45 }}>🎩</span>
+      {/* שורה 1: אווטאר + badge — ממורכזים */}
+      <div className="flex items-center justify-center gap-2 px-3 pt-2 pb-0.5">
+        <div
+          className="flex-shrink-0 rounded-full flex items-center justify-center
+            bg-gradient-to-br from-killer-gold/30 to-killer-surface
+            border-2 border-killer-gold/50 shadow-md"
+          style={{ width: avatarSize, height: avatarSize }}
+        >
+          <span style={{ fontSize: avatarSize * 0.45 }}>🎩</span>
+        </div>
+        <span className="text-[9px] px-1.5 py-0.5 rounded-full
+          bg-killer-gold/20 text-killer-gold font-bold border border-killer-gold/30 whitespace-nowrap">
+          {phaseLabels[phase] || phase}
+          {round > 0 && ` · ${round}`}
+        </span>
       </div>
 
-      {/* טקסט מנחה */}
-      <AnimatePresence mode="wait">
-        {displayedText && (
-          <motion.p
-            key={phase}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className={`flex-1 text-killer-text font-medium leading-snug
-              ${isMobile ? 'text-[10px]' : 'text-[11px]'}
-              line-clamp-2`}
-          >
-            {displayedText}
-            {displayedText.length < fullText.length && (
-              <span className="typing-cursor mr-0.5" />
-            )}
-          </motion.p>
-        )}
-      </AnimatePresence>
+      {/* שורה 2: טקסט מנחה — גדול ומרכוזי */}
+      <div className="px-4 pb-2 text-center min-h-[28px]">
+        <AnimatePresence mode="wait">
+          {displayedText && (
+            <motion.p
+              key={phase}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className={`text-killer-text font-medium leading-snug line-clamp-2 text-center
+                ${isMobile ? 'text-xs' : 'text-sm'}`}
+            >
+              {displayedText}
+              {displayedText.length < fullText.length && (
+                <span className="typing-cursor mr-0.5" />
+              )}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

@@ -61,10 +61,10 @@ export default function PokerTable({ children, isNight, isMobile }: PokerTablePr
       <div
         className="absolute"
         style={{
-          width: isMobile ? 'calc(88vw + 120px)' : 'calc(72vw + 160px)',
-          height: isMobile ? 'calc(45vh + 120px)' : 'calc(42vh + 160px)',
-          maxWidth: isMobile ? '1020px' : '1060px',
-          maxHeight: isMobile ? '580px' : '620px',
+          width: isMobile ? 'calc(88vw + 72px)' : 'calc(72vw + 160px)',
+          height: isMobile ? 'calc(45vh + 72px)' : 'calc(42vh + 160px)',
+          maxWidth: isMobile ? '972px' : '1060px',
+          maxHeight: isMobile ? '532px' : '620px',
           left: '50%',
           top: '50%',
           transform: 'translate(-50%, -50%)',
