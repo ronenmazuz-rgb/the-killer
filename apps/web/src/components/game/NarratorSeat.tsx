@@ -111,61 +111,51 @@ export default function NarratorSeat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, fullText]); // ❗ אל תוסיף displayedText — יגרום לgמגמגום!
 
-  const avatarSize = isMobile ? 40 : 56;
+  const avatarSize = isMobile ? 34 : 40;
 
   return (
-    <div
-      className="absolute flex flex-col items-center"
-      style={{
-        left: '50%',
-        top: isMobile ? '1%' : '1%',
-        transform: 'translateX(-50%)',
-        zIndex: 30,
-      }}
+    <div className="w-full flex items-center gap-2 px-3 py-2
+      bg-killer-surface/80 backdrop-blur-sm
+      border-b border-killer-gold/15 shadow-md"
+      style={{ minHeight: isMobile ? 52 : 60 }}
     >
       {/* Badge שלב */}
-      <div className="mb-1">
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-killer-gold/20 text-killer-gold font-bold border border-killer-gold/30">
-          {phaseLabels[phase] || phase}
-          {round > 0 && ` · סיבוב ${round}`}
-        </span>
-      </div>
+      <span className="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-full
+        bg-killer-gold/20 text-killer-gold font-bold border border-killer-gold/30 whitespace-nowrap">
+        {phaseLabels[phase] || phase}
+        {round > 0 && ` · ${round}`}
+      </span>
 
       {/* אווטאר מנחה */}
       <div
-        className="rounded-full flex items-center justify-center
+        className="flex-shrink-0 rounded-full flex items-center justify-center
           bg-gradient-to-br from-killer-gold/30 to-killer-surface
-          border-2 border-killer-gold/50 shadow-lg"
+          border-2 border-killer-gold/50 shadow-md"
         style={{ width: avatarSize, height: avatarSize }}
       >
         <span style={{ fontSize: avatarSize * 0.45 }}>🎩</span>
       </div>
 
-      {/* בועת דיבור */}
+      {/* טקסט מנחה */}
       <AnimatePresence mode="wait">
         {displayedText && (
-          <motion.div
+          <motion.p
             key={phase}
-            initial={{ opacity: 0, y: -5, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 5, scale: 0.95 }}
-            transition={{ duration: 0.3 }}
-            className="mt-2 speech-bubble max-w-[280px] sm:max-w-[360px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className={`flex-1 text-killer-text font-medium leading-snug
+              ${isMobile ? 'text-[10px]' : 'text-[11px]'}
+              line-clamp-2`}
           >
-            <p className={`text-killer-text font-medium leading-relaxed text-center ${
-              isMobile ? 'text-[11px]' : 'text-xs'
-            }`}>
-              {displayedText}
-              {displayedText.length < fullText.length && (
-                <span className="typing-cursor mr-0.5" />
-              )}
-            </p>
-          </motion.div>
+            {displayedText}
+            {displayedText.length < fullText.length && (
+              <span className="typing-cursor mr-0.5" />
+            )}
+          </motion.p>
         )}
       </AnimatePresence>
-
-      {/* תווית */}
-      <span className="text-[9px] text-killer-gold/60 font-medium mt-1">המנחה</span>
     </div>
   );
 }

@@ -84,16 +84,11 @@ export default function TableCenter({
 
   return (
     <div
-      className="absolute flex items-center justify-center pointer-events-none"
-      style={{
-        left: '50%',
-        top: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 28,
-        width: isMobile ? '72%' : '52%',
-        maxWidth: '400px',
-      }}
+      className="w-full flex items-center justify-center
+        bg-killer-surface/75 backdrop-blur-sm border-t border-killer-text-dim/15"
+      style={{ minHeight: 56, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
+      <div className="w-full max-w-sm px-4 py-2">
       <AnimatePresence mode="wait">
         {/* === שלב לילה — שחקן פאסיבי === */}
         {isNightWaiting && (
@@ -273,6 +268,7 @@ export default function TableCenter({
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }

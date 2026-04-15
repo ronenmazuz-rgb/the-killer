@@ -184,26 +184,28 @@ export default function GameBoard() {
   const eliminatedPlayer = players.find((p) => p.id === gameState.eliminatedPlayerId);
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen w-full flex flex-col relative overflow-hidden">
       {/* שכבת לילה */}
       {isNight && (
         <div className="fixed inset-0 bg-killer-night/90 z-10 transition-opacity duration-1000" />
       )}
 
-      {/* שולחן פוקר */}
-      <div className="relative z-20 w-full h-screen flex items-center justify-center">
-        <PokerTable isNight={isNight} isMobile={isMobile}>
-          {/* מנחה */}
-          <NarratorSeat
-            phase={phase}
-            round={round}
-            killedPlayerName={killedPlayer?.displayName}
-            eliminatedPlayerName={eliminatedPlayer?.displayName}
-            winner={winner}
-            isMobile={isMobile}
-          />
+      {/* === TOP: מנחה === */}
+      <div className="relative z-20 flex-shrink-0">
+        <NarratorSeat
+          phase={phase}
+          round={round}
+          killedPlayerName={killedPlayer?.displayName}
+          eliminatedPlayerName={eliminatedPlayer?.displayName}
+          winner={winner}
+          isMobile={isMobile}
+        />
+      </div>
 
-          {/* מושבי שחקנים */}
+      {/* === MIDDLE: שולחן פוקר + מושבי שחקנים === */}
+      <div className="relative z-20 flex-1 flex items-center justify-center min-h-0">
+        <PokerTable isNight={isNight} isMobile={isMobile}>
+          {/* מושבי שחקנים בלבד */}
           {players.map((player, index) => {
             const pos = seatPositions[index];
             if (!pos) return null;
@@ -234,36 +236,35 @@ export default function GameBoard() {
               />
             );
           })}
-
-          {/* מרכז שולחן */}
-          <TableCenter
-            phase={phase}
-            isHost={isHost}
-            isAlive={isAlive}
-            myId={myId}
-            alivePlayers={alivePlayers}
-            votes={votes}
-            detectiveResult={detectiveResult}
-            showNightAction={showNightAction}
-            nightRole={showDetectiveAction ? 'detective' : showKillerAction ? 'killer' : undefined}
-            isNightWaiting={isNightWaiting}
-            discussionTimeRemaining={gameState.timeRemaining}
-            onEndDiscussion={endDiscussion}
-            onVote={vote}
-            isMobile={isMobile}
-          />
         </PokerTable>
       </div>
 
-      {/* בקרי מדיה */}
-      {isDayPhase && (
+      {/* === BOTTOM: פעולות (טיימר / הצבעה / לילה) + בקרי מדיה === */}
+      <div className="relative z-20 flex-shrink-0">
+        <TableCenter
+          phase={phase}
+          isHost={isHost}
+          isAlive={isAlive}
+          myId={myId}
+          alivePlayers={alivePlayers}
+          votes={votes}
+          detectiveResult={detectiveResult}
+          showNightAction={showNightAction}
+          nightRole={showDetectiveAction ? 'detective' : showKillerAction ? 'killer' : undefined}
+          isNightWaiting={isNightWaiting}
+          discussionTimeRemaining={gameState.timeRemaining}
+          onEndDiscussion={endDiscussion}
+          onVote={vote}
+          isMobile={isMobile}
+        />
+        {/* בקרי מדיה — תמיד גלויים (לא רק ביום) */}
         <MediaControls
           isMicOn={isMicOn}
           isCameraOn={isCameraOn}
           onToggleMic={toggleMic}
           onToggleCamera={toggleCamera}
         />
-      )}
+      </div>
     </div>
   );
 }

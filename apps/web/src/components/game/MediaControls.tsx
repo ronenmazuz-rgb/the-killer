@@ -28,9 +28,8 @@ export default function MediaControls({
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50
-      flex items-center gap-2 bg-killer-surface/90 backdrop-blur-sm
-      rounded-full px-4 py-2 border border-killer-text-dim/20 shadow-xl">
+    <div className="flex items-center justify-center gap-2 py-2 px-4
+      border-t border-killer-text-dim/10">
       {/* מיקרופון */}
       <button
         onClick={onToggleMic}
